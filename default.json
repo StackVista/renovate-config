@@ -1,0 +1,28 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "labels": ["dependencies"],
+  "minimumReleaseAge": "14 days",
+  "dependencyDashboard": true,
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"],
+    "minimumReleaseAge": null
+  },
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["patch"],
+      "groupName": "all patch dependencies",
+      "groupSlug": "all-patch"
+    },
+    {
+      "matchCategories": ["security"],
+      "groupName": "security patches",
+      "groupSlug": "security",
+      "minimumReleaseAge": null
+    }
+  ],
+  "schedule": ["before 7:00 am every weekday"]
+}

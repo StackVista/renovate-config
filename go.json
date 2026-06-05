@@ -1,0 +1,17 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "packageRules": [
+    {
+      "matchManagers": ["gomod"],
+      "groupName": "Go module dependencies",
+      "groupSlug": "go-deps"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["golang"],
+      "groupName": "Go toolchain",
+      "groupSlug": "go-toolchain"
+    }
+  ],
+  "postUpdateOptions": ["gomodTidy"]
+}

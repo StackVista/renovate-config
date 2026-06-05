@@ -1,0 +1,9 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "local>StackVista/renovate-config",
+    "local>StackVista/renovate-config:go",
+    "local>StackVista/renovate-config:docker",
+    "local>StackVista/renovate-config:node"
+  ]
+}

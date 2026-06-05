@@ -1,0 +1,14 @@
+name: Renovate
+
+on:
+  schedule:
+    - cron: "0 */6 * * *" # every 6 hours
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  renovate:
+    uses: StackVista/renovate-config/.github/workflows/renovate.yml@main
+    secrets: inherit
