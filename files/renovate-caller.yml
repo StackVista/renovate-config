@@ -11,4 +11,5 @@ permissions:
 jobs:
   renovate:
     uses: StackVista/renovate-config/.github/workflows/renovate.yml@main
-    secrets: inherit
+    secrets:
+      RENOVATE_GH_APP_PRIVATE_KEY: ${{ secrets.RENOVATE_GH_APP_PRIVATE_KEY }}
