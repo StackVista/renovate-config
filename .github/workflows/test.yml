@@ -22,9 +22,7 @@ jobs:
           node-version: "22"
 
       - name: Install renovate for config validation
-        run: npm install -g renovate@${{ env.RENOVATE_VERSION }}
-        env:
-          RENOVATE_VERSION: "39.246.0"
+        run: npm install -g renovate@latest
 
       - name: Lint JSON syntax
         run: make lint-json

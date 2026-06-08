@@ -2,8 +2,18 @@ name: Self Renovate
 
 on:
   schedule:
-    - cron: "0 6 * * 1" # weekly on Monday at 06:00 UTC
+    - cron: "0 5,12 * * *" # twice per day at 05:00 and 12:00 UTC
   workflow_dispatch:
+    inputs:
+      log_level:
+        description: "Renovate log level"
+        type: choice
+        default: info
+        options: [info, debug]
+      dry_run:
+        description: "Dry run (no PRs created)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -11,5 +21,8 @@ permissions:
 jobs:
   renovate:
     uses: ./.github/workflows/renovate.yml
+    with:
+      log_level: ${{ inputs.log_level || 'info' }}
+      dry_run: ${{ inputs.dry_run || false }}
     secrets:
       RENOVATE_GH_APP_PRIVATE_KEY: ${{ secrets.RENOVATE_GH_APP_PRIVATE_KEY }}

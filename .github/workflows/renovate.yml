@@ -15,10 +15,6 @@ on:
       RENOVATE_GH_APP_PRIVATE_KEY:
         required: true
 
-env:
-  # Pinned Renovate CLI version — updated by self-renovate workflow
-  RENOVATE_VERSION: "39.246.0"
-
 jobs:
   renovate:
     runs-on: ubuntu-latest
@@ -34,17 +30,11 @@ jobs:
         with:
           client-id: ${{ vars.RENOVATE_GH_APP_CLIENT_ID }}
           private-key: ${{ secrets.RENOVATE_GH_APP_PRIVATE_KEY }}
-          permission-contents: write
-          permission-pull-requests: write
-          permission-issues: write
-          permission-checks: read
-          permission-workflows: write
 
       - name: Run Renovate
         uses: renovatebot/github-action@693b9ef15eec82123529a37c782242f091365961 # v46.1.14
         with:
           token: ${{ steps.app-token.outputs.token }}
-          renovate-version: ${{ env.RENOVATE_VERSION }}
         env:
           LOG_LEVEL: ${{ inputs.log_level }}
           RENOVATE_DRY_RUN: ${{ inputs.dry_run && 'full' || '' }}
