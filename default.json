@@ -3,9 +3,10 @@
   "extends": ["config:recommended"],
   "labels": ["dependencies"],
   "minimumReleaseAge": "14 days",
-  "dependencyDashboard": true,
-  "prConcurrentLimit": 5,
-  "prHourlyLimit": 2,
+  "dependencyDashboard": false,
+  "prCreation": "immediate",
+  "prConcurrentLimit": 10,
+  "prHourlyLimit": 5,
   "vulnerabilityAlerts": {
     "enabled": true,
     "labels": ["security"],
@@ -13,9 +14,9 @@
   },
   "packageRules": [
     {
-      "matchUpdateTypes": ["patch"],
-      "groupName": "all patch dependencies",
-      "groupSlug": "all-patch"
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "all patch and minor dependencies",
+      "groupSlug": "all-patch-minor"
     },
     {
       "matchCategories": ["security"],
@@ -24,5 +25,5 @@
       "minimumReleaseAge": null
     }
   ],
-  "schedule": ["before 7:00 am every weekday"]
+  "schedule": ["at any time"]
 }
