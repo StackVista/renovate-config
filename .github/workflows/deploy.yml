@@ -1,0 +1,61 @@
+name: Deploy Renovate to repo
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: "Target repository (e.g., StackVista/repo-name)"
+        required: true
+        type: string
+      ecosystems:
+        description: "Ecosystem presets (comma-separated: go,docker,node,java)"
+        required: true
+        default: "go"
+        type: string
+      base_branch:
+        description: "Base branch of the target repo"
+        required: false
+        default: "main"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout renovate-config
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          path: config
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.RENOVATE_GH_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RENOVATE_GH_APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.inputs.repository }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+
+      - name: Checkout target repo
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          repository: ${{ github.event.inputs.repository }}
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ github.event.inputs.base_branch }}
+          path: target
+
+      - name: Generate renovate.json from ecosystems
+        run: config/scripts/deploy/generate-renovate-config.sh "${{ github.event.inputs.ecosystems }}" target/renovate.json
+
+      - name: Prepare target repo (copy workflow, remove dependabot)
+        run: config/scripts/deploy/setup-target-repo.sh config target
+
+      - name: Create onboarding PR
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: config/scripts/deploy/create-onboarding-pr.sh target "${{ github.event.inputs.repository }}" "${{ github.event.inputs.base_branch }}" "${{ github.event.inputs.ecosystems }}"
