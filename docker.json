@@ -2,7 +2,8 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "packageRules": [
     {
-      "matchManagers": ["dockerfile"],
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "matchCategories": ["!security"],
       "groupName": "Docker base images",
       "groupSlug": "docker"
     }
