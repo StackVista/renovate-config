@@ -3,14 +3,23 @@
   "packageRules": [
     {
       "matchManagers": ["gomod"],
+      "matchCategories": ["!security"],
       "groupName": "Go module dependencies",
       "groupSlug": "go-deps"
     },
     {
       "matchManagers": ["gomod"],
-      "matchDepTypes": ["golang"],
+      "matchDepTypes": ["golang", "toolchain"],
+      "matchCategories": ["!security"],
       "groupName": "Go toolchain",
       "groupSlug": "go-toolchain"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["tool"],
+      "matchCategories": ["!security"],
+      "groupName": "Go tools",
+      "groupSlug": "go-tools"
     }
   ],
   "postUpdateOptions": ["gomodTidy"]

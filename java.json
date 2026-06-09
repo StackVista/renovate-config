@@ -2,7 +2,8 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "packageRules": [
     {
-      "matchManagers": ["maven", "gradle"],
+      "matchManagers": ["maven", "gradle", "sbt"],
+      "matchCategories": ["!security"],
       "groupName": "Java dependencies",
       "groupSlug": "java-deps"
     }
