@@ -16,6 +16,12 @@
     },
     {
       "matchManagers": ["gomod"],
+      "matchDepTypes": ["toolchain"],
+      "matchUpdateTypes": ["patch"],
+      "minimumReleaseAge": null
+    },
+    {
+      "matchManagers": ["gomod"],
       "matchDepTypes": ["tool"],
       "matchCategories": ["!security"],
       "groupName": "Go tools",
