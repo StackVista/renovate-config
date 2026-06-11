@@ -13,3 +13,4 @@ jobs:
     uses: StackVista/renovate-config/.github/workflows/renovate.yml@main
     secrets:
       RENOVATE_GH_APP_PRIVATE_KEY: ${{ secrets.RENOVATE_GH_APP_PRIVATE_KEY }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}

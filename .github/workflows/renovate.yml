@@ -14,6 +14,8 @@ on:
     secrets:
       RENOVATE_GH_APP_PRIVATE_KEY:
         required: true
+      REGISTRY_PASSWORD:
+        required: false
 
 jobs:
   renovate:
@@ -31,6 +33,36 @@ jobs:
           client-id: ${{ vars.RENOVATE_GH_APP_CLIENT_ID }}
           private-key: ${{ secrets.RENOVATE_GH_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+
+      - name: Configure Docker registry credentials
+        env:
+          REGISTRY_USER: ${{ vars.REGISTRY_USER }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+        run: |
+          if [[ -z "${REGISTRY_USER}" && -z "${REGISTRY_PASSWORD}" ]]; then
+            exit 0
+          fi
+
+          if [[ -z "${REGISTRY_USER}" || -z "${REGISTRY_PASSWORD}" ]]; then
+            echo "Both REGISTRY_USER and REGISTRY_PASSWORD must be configured" >&2
+            exit 1
+          fi
+
+          host_rules=$(jq -nc \
+            --arg username "${REGISTRY_USER}" \
+            --arg password "${REGISTRY_PASSWORD}" \
+            '[{
+              hostType: "docker",
+              matchHost: "registry.tooling.stackstate.io",
+              username: $username,
+              password: $password
+            }]')
+
+          {
+            echo "RENOVATE_HOST_RULES<<EOF"
+            echo "${host_rules}"
+            echo "EOF"
+          } >> "${GITHUB_ENV}"
 
       - name: Run Renovate
         uses: renovatebot/github-action@693b9ef15eec82123529a37c782242f091365961 # v46.1.14
