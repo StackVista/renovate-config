@@ -4,6 +4,9 @@ set -euo pipefail
 # Create an onboarding PR in a target repo that has been prepared by
 # generate-renovate-config.sh and setup-target-repo.sh.
 #
+# Commits are created via the GitHub git data API so they are signed
+# (verified) by GitHub — required when branch protection enforces signed commits.
+#
 # Usage: scripts/create-onboarding-pr.sh <target-dir> <repository> <base-branch> <ecosystems>
 #   target-dir   — path to the prepared target repo checkout
 #   repository   — full repo name (e.g. StackVista/repo-name)
@@ -20,28 +23,89 @@ REPOSITORY="$2"
 BASE_BRANCH="$3"
 ECOSYSTEMS="$4"
 
-cd "$TARGET_DIR"
-
 BRANCH="chore/onboard-renovate"
-git checkout -b "$BRANCH"
-git add renovate.json .github/workflows/renovate.yml
-git rm -f --ignore-unmatch .github/dependabot.yml
 
-if git diff --cached --quiet; then
-  echo "No changes to commit — Renovate may already be configured."
-  exit 0
+# --- Get base branch commit SHA and tree SHA ---
+BASE_SHA=$(gh api "repos/${REPOSITORY}/git/ref/heads/${BASE_BRANCH}" --jq '.object.sha')
+BASE_TREE_SHA=$(gh api "repos/${REPOSITORY}/git/commits/${BASE_SHA}" --jq '.tree.sha')
+
+# --- Create a blob for a local file and return its SHA ---
+create_blob() {
+  local file="$1"
+  local content
+  content=$(base64 -w 0 "$file")
+  gh api "repos/${REPOSITORY}/git/blobs" \
+    --method POST \
+    --input <(jq -n --arg content "$content" '{encoding: "base64", content: $content}') \
+    --jq '.sha'
+}
+
+RENOVATE_JSON_SHA=$(create_blob "${TARGET_DIR}/renovate.json")
+RENOVATE_WF_SHA=$(create_blob "${TARGET_DIR}/.github/workflows/renovate.yml")
+
+# --- Build tree entries ---
+TREE_ENTRIES=$(jq -n \
+  --arg rj "$RENOVATE_JSON_SHA" \
+  --arg rw "$RENOVATE_WF_SHA" \
+  '[
+    {"path": "renovate.json",                     "mode": "100644", "type": "blob", "sha": $rj},
+    {"path": ".github/workflows/renovate.yml",    "mode": "100644", "type": "blob", "sha": $rw}
+  ]')
+
+# Mark dependabot.yml for deletion if it exists in the remote repo
+if gh api "repos/${REPOSITORY}/contents/.github/dependabot.yml" --silent 2>/dev/null; then
+  echo "Scheduling removal of .github/dependabot.yml"
+  TREE_ENTRIES=$(jq -c \
+    '. + [{"path": ".github/dependabot.yml", "mode": "100644", "type": "blob", "sha": null}]' \
+    <<< "$TREE_ENTRIES")
 fi
 
-git config user.name "stackvista-renovate[bot]"
-git config user.email "stackvista-renovate[bot]@users.noreply.github.com"
-git commit -m "chore: onboard Renovate automated dependency updates
+# --- Create tree ---
+NEW_TREE_SHA=$(gh api "repos/${REPOSITORY}/git/trees" \
+  --method POST \
+  --input <(jq -n \
+    --arg base_tree "$BASE_TREE_SHA" \
+    --argjson tree "$TREE_ENTRIES" \
+    '{base_tree: $base_tree, tree: $tree}') \
+  --jq '.sha')
+
+# --- Create signed commit via API ---
+COMMIT_MESSAGE="chore: onboard Renovate automated dependency updates
 
 Adds shared Renovate config extending StackVista/renovate-config presets
 and a caller workflow that runs on schedule.
 
-Ecosystems: $ECOSYSTEMS"
+Ecosystems: ${ECOSYSTEMS}"
 
-git push origin "$BRANCH"
+NEW_COMMIT_SHA=$(gh api "repos/${REPOSITORY}/git/commits" \
+  --method POST \
+  --input <(jq -n \
+    --arg message "$COMMIT_MESSAGE" \
+    --arg tree "$NEW_TREE_SHA" \
+    --arg parent "$BASE_SHA" \
+    '{message: $message, tree: $tree, parents: [$parent]}') \
+  --jq '.sha')
+
+# --- Create or update branch ref ---
+if gh api "repos/${REPOSITORY}/git/ref/heads/${BRANCH}" --silent 2>/dev/null; then
+  echo "Branch ${BRANCH} already exists — updating to new commit."
+  gh api "repos/${REPOSITORY}/git/refs/heads/${BRANCH}" \
+    --method PATCH \
+    --field sha="$NEW_COMMIT_SHA" \
+    --field force:=true
+else
+  gh api "repos/${REPOSITORY}/git/refs" \
+    --method POST \
+    --field "ref=refs/heads/${BRANCH}" \
+    --field sha="$NEW_COMMIT_SHA"
+fi
+
+# --- Create PR (skip if one already exists for this branch) ---
+EXISTING_PR=$(gh pr list --repo "$REPOSITORY" --head "$BRANCH" --json number --jq '.[0].number' 2>/dev/null || echo "")
+if [[ -n "$EXISTING_PR" ]]; then
+  echo "PR #${EXISTING_PR} already exists for branch ${BRANCH} — skipping PR creation."
+  exit 0
+fi
 
 gh pr create \
   --repo "$REPOSITORY" \
