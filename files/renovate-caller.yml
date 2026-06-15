@@ -11,6 +11,11 @@ permissions:
 jobs:
   renovate:
     uses: StackVista/renovate-config/.github/workflows/renovate.yml@main
+    # Optional: configure repo-specific Docker registries for Renovate.
+    # with:
+    #   docker_registry_1: dp.apps.rancher.io
+    #   docker_registry_1_username: rancher-user
     secrets:
       RENOVATE_GH_APP_PRIVATE_KEY: ${{ secrets.RENOVATE_GH_APP_PRIVATE_KEY }}
-      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      # DOCKER_REGISTRY_1_USERNAME: ${{ secrets.APPLICATION_COLLECTION_USERNAME }}
+      # DOCKER_REGISTRY_1_PASSWORD: ${{ secrets.APPLICATION_COLLECTION_PASSWORD }}

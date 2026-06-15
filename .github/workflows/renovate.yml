@@ -11,10 +11,68 @@ on:
         description: "Run in dry-run mode (no PRs created)"
         type: boolean
         default: false
+      docker_registry_1:
+        description: "Optional Docker registry host for Renovate authentication slot 1"
+        type: string
+        default: ""
+      docker_registry_1_username:
+        description: "Optional Docker registry username for Renovate authentication slot 1"
+        type: string
+        default: ""
+      docker_registry_2:
+        description: "Optional Docker registry host for Renovate authentication slot 2"
+        type: string
+        default: ""
+      docker_registry_2_username:
+        description: "Optional Docker registry username for Renovate authentication slot 2"
+        type: string
+        default: ""
+      docker_registry_3:
+        description: "Optional Docker registry host for Renovate authentication slot 3"
+        type: string
+        default: ""
+      docker_registry_3_username:
+        description: "Optional Docker registry username for Renovate authentication slot 3"
+        type: string
+        default: ""
+      docker_registry_4:
+        description: "Optional Docker registry host for Renovate authentication slot 4"
+        type: string
+        default: ""
+      docker_registry_4_username:
+        description: "Optional Docker registry username for Renovate authentication slot 4"
+        type: string
+        default: ""
+      docker_registry_5:
+        description: "Optional Docker registry host for Renovate authentication slot 5"
+        type: string
+        default: ""
+      docker_registry_5_username:
+        description: "Optional Docker registry username for Renovate authentication slot 5"
+        type: string
+        default: ""
     secrets:
       RENOVATE_GH_APP_PRIVATE_KEY:
         required: true
-      REGISTRY_PASSWORD:
+      DOCKER_REGISTRY_1_USERNAME:
+        required: false
+      DOCKER_REGISTRY_1_PASSWORD:
+        required: false
+      DOCKER_REGISTRY_2_USERNAME:
+        required: false
+      DOCKER_REGISTRY_2_PASSWORD:
+        required: false
+      DOCKER_REGISTRY_3_USERNAME:
+        required: false
+      DOCKER_REGISTRY_3_PASSWORD:
+        required: false
+      DOCKER_REGISTRY_4_USERNAME:
+        required: false
+      DOCKER_REGISTRY_4_PASSWORD:
+        required: false
+      DOCKER_REGISTRY_5_USERNAME:
+        required: false
+      DOCKER_REGISTRY_5_PASSWORD:
         required: false
 
 jobs:
@@ -36,27 +94,58 @@ jobs:
 
       - name: Configure Docker registry credentials
         env:
-          REGISTRY_USER: ${{ vars.REGISTRY_USER }}
-          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          DOCKER_REGISTRY_1_HOST: ${{ inputs.docker_registry_1 }}
+          DOCKER_REGISTRY_1_USERNAME: ${{ secrets.DOCKER_REGISTRY_1_USERNAME || inputs.docker_registry_1_username }}
+          DOCKER_REGISTRY_1_PASSWORD: ${{ secrets.DOCKER_REGISTRY_1_PASSWORD }}
+          DOCKER_REGISTRY_2_HOST: ${{ inputs.docker_registry_2 }}
+          DOCKER_REGISTRY_2_USERNAME: ${{ secrets.DOCKER_REGISTRY_2_USERNAME || inputs.docker_registry_2_username }}
+          DOCKER_REGISTRY_2_PASSWORD: ${{ secrets.DOCKER_REGISTRY_2_PASSWORD }}
+          DOCKER_REGISTRY_3_HOST: ${{ inputs.docker_registry_3 }}
+          DOCKER_REGISTRY_3_USERNAME: ${{ secrets.DOCKER_REGISTRY_3_USERNAME || inputs.docker_registry_3_username }}
+          DOCKER_REGISTRY_3_PASSWORD: ${{ secrets.DOCKER_REGISTRY_3_PASSWORD }}
+          DOCKER_REGISTRY_4_HOST: ${{ inputs.docker_registry_4 }}
+          DOCKER_REGISTRY_4_USERNAME: ${{ secrets.DOCKER_REGISTRY_4_USERNAME || inputs.docker_registry_4_username }}
+          DOCKER_REGISTRY_4_PASSWORD: ${{ secrets.DOCKER_REGISTRY_4_PASSWORD }}
+          DOCKER_REGISTRY_5_HOST: ${{ inputs.docker_registry_5 }}
+          DOCKER_REGISTRY_5_USERNAME: ${{ secrets.DOCKER_REGISTRY_5_USERNAME || inputs.docker_registry_5_username }}
+          DOCKER_REGISTRY_5_PASSWORD: ${{ secrets.DOCKER_REGISTRY_5_PASSWORD }}
         run: |
-          if [[ -z "${REGISTRY_USER}" && -z "${REGISTRY_PASSWORD}" ]]; then
+          host_rules="[]"
+
+          add_host_rule() {
+            local host="$1"
+            local username="$2"
+            local password="$3"
+            local label="$4"
+
+            if [[ -z "${host}" && -z "${username}" && -z "${password}" ]]; then
+              return
+            fi
+
+            if [[ -z "${host}" || -z "${username}" || -z "${password}" ]]; then
+              echo "Docker registry credentials for ${label} require host, username, and password" >&2
+              exit 1
+            fi
+
+            host_rules=$(jq -c \
+              --arg host "${host}" \
+              --arg username "${username}" \
+              --arg password "${password}" \
+              '. + [{hostType: "docker", matchHost: $host, username: $username, password: $password}]' \
+              <<< "${host_rules}")
+          }
+
+          for slot in 1 2 3 4 5; do
+            host_var="DOCKER_REGISTRY_${slot}_HOST"
+            username_var="DOCKER_REGISTRY_${slot}_USERNAME"
+            password_var="DOCKER_REGISTRY_${slot}_PASSWORD"
+
+            add_host_rule "${!host_var}" "${!username_var}" "${!password_var}" "slot ${slot}"
+          done
+
+          if [[ "${host_rules}" == "[]" ]]; then
             exit 0
           fi
-
-          if [[ -z "${REGISTRY_USER}" || -z "${REGISTRY_PASSWORD}" ]]; then
-            echo "Both REGISTRY_USER and REGISTRY_PASSWORD must be configured" >&2
-            exit 1
-          fi
-
-          host_rules=$(jq -nc \
-            --arg username "${REGISTRY_USER}" \
-            --arg password "${REGISTRY_PASSWORD}" \
-            '[{
-              hostType: "docker",
-              matchHost: "registry.tooling.stackstate.io",
-              username: $username,
-              password: $password
-            }]')
 
           {
             echo "RENOVATE_HOST_RULES<<EOF"

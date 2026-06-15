@@ -7,11 +7,28 @@
   "prCreation": "immediate",
   "prConcurrentLimit": 10,
   "prHourlyLimit": 5,
+  "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
     "enabled": true,
     "labels": ["security"],
     "minimumReleaseAge": null
   },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update version variables annotated with Renovate metadata.",
+      "managerFilePatterns": [
+        "/(^|/|\\.)Dockerfile$/",
+        "/(^|/)Dockerfile[^/]*$/",
+        "/(^|/)Makefile$/",
+        "/scripts/.*\\.sh$/",
+        "/(^|/)\\.github/.*\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)(?: packageName=(?<packageName>[^\\s]+))?(?: versioning=(?<versioning>[^\\s]+))?(?: extractVersion=(?<extractVersion>[^\\s]+))?\\s+.+_(?:version|VERSION).*[:=](?:\\s|\\\"|)(?<currentValue>[^\\\"\\s]+)(?:\\\"|)"
+      ]
+    }
+  ],
   "packageRules": [
     {
       "matchUpdateTypes": ["patch", "minor"],
