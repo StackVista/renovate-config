@@ -11,6 +11,13 @@ on:
         description: "Run in dry-run mode (no PRs created)"
         type: boolean
         default: false
+      allowed_commands:
+        description: >-
+          JSON array of regex patterns for postUpgradeTasks commands this repo is
+          allowed to run (e.g. '["^bash tools/myscript\\.sh"]'). Defaults to an
+          empty list (no post-upgrade commands permitted).
+        type: string
+        default: "[]"
       docker_registry_1:
         description: "Optional Docker registry host for Renovate authentication slot 1"
         type: string
@@ -161,3 +168,4 @@ jobs:
           LOG_LEVEL: ${{ inputs.log_level }}
           RENOVATE_DRY_RUN: ${{ inputs.dry_run && 'full' || '' }}
           RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_ALLOWED_COMMANDS: ${{ inputs.allowed_commands }}

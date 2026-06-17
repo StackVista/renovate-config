@@ -11,10 +11,15 @@ permissions:
 jobs:
   renovate:
     uses: StackVista/renovate-config/.github/workflows/renovate.yml@main
-    # Optional: configure repo-specific Docker registries for Renovate.
+    # Optional: configure repo-specific inputs for Renovate.
     # with:
+    #   # Docker registry authentication (up to 5 slots).
     #   docker_registry_1: dp.apps.rancher.io
     #   docker_registry_1_username: rancher-user
+    #   # Post-upgrade command allowlist: JSON array of regex patterns.
+    #   # Only commands matching a pattern here will be executed.
+    #   allowed_commands: >-
+    #     ["^bash tools/my-post-upgrade-script\\.sh '.*' '.*' '.*'$"]
     secrets:
       RENOVATE_GH_APP_PRIVATE_KEY: ${{ secrets.RENOVATE_GH_APP_PRIVATE_KEY }}
       # DOCKER_REGISTRY_1_USERNAME: ${{ secrets.APPLICATION_COLLECTION_USERNAME }}
