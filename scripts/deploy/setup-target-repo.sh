@@ -23,9 +23,12 @@ if [ ! -f "$CALLER_TEMPLATE" ]; then
   exit 1
 fi
 
+RENOVATE_CONFIG_SHA=$(git -C "$CONFIG_DIR" rev-parse HEAD)
+
 mkdir -p "$TARGET_DIR/.github/workflows"
-cp "$CALLER_TEMPLATE" "$TARGET_DIR/.github/workflows/renovate.yml"
-echo "Copied workflow caller to $TARGET_DIR/.github/workflows/renovate.yml"
+sed "s|StackVista/renovate-config/.github/workflows/renovate.yml@main|StackVista/renovate-config/.github/workflows/renovate.yml@${RENOVATE_CONFIG_SHA} # main|g" \
+  "$CALLER_TEMPLATE" > "$TARGET_DIR/.github/workflows/renovate.yml"
+echo "Copied workflow caller to $TARGET_DIR/.github/workflows/renovate.yml (pinned to ${RENOVATE_CONFIG_SHA})"
 
 if [ -f "$TARGET_DIR/.github/dependabot.yml" ]; then
   rm -f "$TARGET_DIR/.github/dependabot.yml"
