@@ -40,12 +40,40 @@ Applied to every repo. Inherits `config:recommended` and layers these policies:
 - **Patch + minor grouping** — all non-security patch and minor updates batched into one PR
 - **Rate limits** — max 10 concurrent PRs, 5 per hour
 - **OSV vulnerability alerts** — enabled
-- **Regex custom manager** — picks up version variables annotated with `# renovate:` comments in Dockerfiles, Makefiles, shell scripts, and workflow YAML:
+- **Regex custom manager** — picks up version variables annotated with `# renovate:` comments in Dockerfiles, Makefiles, shell scripts, and workflow YAML. Two constraints apply:
+  1. The annotation comment must be on the line immediately before the variable assignment.
+  2. The variable name must contain `_VERSION` or `_version` (with underscore prefix — e.g. `MY_TOOL_VERSION`, `go_version`).
+
+  Annotation syntax:
+  ```
+  # renovate: datasource=<datasource> depName=<depName> [packageName=<name>] [versioning=<scheme>] [extractVersion=<pattern>]
+  <VAR_NAME containing _VERSION or _version>=<currentValue>
+  ```
+
+  `datasource` and `depName` are required. The optional fields:
+  - `packageName` — when the registry package name differs from `depName`
+  - `versioning` — version scheme to use (e.g. `semver`, `docker`, `regex`); defaults to datasource default
+  - `extractVersion` — regex to extract the version string from the upstream tag
+
+  Examples:
 
   ```dockerfile
-  # renovate: datasource=github-releases depName=foo/bar
-  ARG MY_TOOL_VERSION=1.2.3
+  # Dockerfile — github-releases datasource
+  # renovate: datasource=github-releases depName=cli/cli
+  ARG GH_CLI_VERSION=2.49.0
+
+  # shell script or Makefile — with explicit versioning scheme
+  # renovate: datasource=docker depName=golang versioning=docker
+  GO_VERSION=1.22.3
+
+  # GitHub Actions workflow — packageName differs from depName
+  # renovate: datasource=github-releases depName=aquasecurity/trivy packageName=aquasecurity/trivy
+  TRIVY_VERSION: "0.50.1"
   ```
+
+  > **Common mistake:** a variable named `MYTOOLVERSION` (no underscore before `VERSION`) will not be matched. Always use `MY_TOOL_VERSION` or `my_tool_version`.
+
+  This manager is included in `default.json` and is active automatically in any repo extending `local>StackVista/renovate-config` — no per-repo setup required. It covers Dockerfiles, Makefiles, `scripts/*.sh`, and `.github/**/*.yml`. If your repo has version variables in other file types (e.g. `versions.yaml`, `*.mk`), add a `customManagers` entry to your `renovate.json` targeting those paths.
 
 ### `go.json`
 
@@ -111,11 +139,40 @@ Up to 5 registry slots are available. Credentials can come from secrets or (for 
       DOCKER_REGISTRY_1_PASSWORD: ${{ secrets.REGISTRY_TOOLING_PASSWORD }}
 ```
 
-### Exclude a dependency from updates
+### Prevent major updates for a specific dependency
+
+The shared preset allows patch and minor updates. To block major version bumps for a dependency that requires manual migration:
 
 ```json
 {
-  "extends": ["local>StackVista/renovate-config"],
+  "packageRules": [
+    {
+      "matchDepNames": ["k8s.io/client-go"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    }
+  ]
+}
+```
+
+To block major updates for an entire manager (e.g. all Go modules):
+
+```json
+{
+  "packageRules": [
+    {
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    }
+  ]
+}
+```
+
+### Exclude a dependency from all updates
+
+```json
+{
   "packageRules": [
     {
       "matchDepNames": ["k8s.io/client-go"],
@@ -125,7 +182,25 @@ Up to 5 registry slots are available. Credentials can come from secrets or (for 
 }
 ```
 
+### Pin to an exact version (ignore all updates)
+
+Same as excluding, but the intent is to stay on a specific version intentionally. Add a comment in `renovate.json` so future maintainers understand why:
+
+```json
+{
+  "packageRules": [
+    {
+      "matchDepNames": ["github.com/some/lib"],
+      "enabled": false,
+      "description": "Pinned at v1.2.3 — v2 requires API migration tracked in STAC-XXXXX"
+    }
+  ]
+}
+```
+
 ### Allow minor updates for a specific package
+
+The shared preset groups patch and minor together. To explicitly allow minor updates for a package where you are comfortable with it (this is already the default behaviour, but useful to document alongside `matchUpdateTypes`):
 
 ```json
 {
@@ -137,6 +212,46 @@ Up to 5 registry slots are available. Credentials can come from secrets or (for 
   ]
 }
 ```
+
+### Dependency appears in the wrong PR group
+
+Renovate's grouping rules are applied in order; the last matching rule wins. If a dependency lands in the wrong group (e.g. it gets grouped with security patches but it is not a CVE), add an explicit rule that overrides the group for that package:
+
+```json
+{
+  "packageRules": [
+    {
+      "matchDepNames": ["github.com/some/noisy-lib"],
+      "groupName": "all patch and minor dependencies",
+      "groupSlug": "all-patch-minor"
+    }
+  ]
+}
+```
+
+To completely remove a dependency from all grouping (it gets its own PR):
+
+```json
+{
+  "packageRules": [
+    {
+      "matchDepNames": ["github.com/some/lib"],
+      "groupName": null
+    }
+  ]
+}
+```
+
+### Regex custom manager not picking up a variable
+
+Check these in order:
+
+1. **Variable name** — must contain `_VERSION` or `_version` with an underscore (e.g. `GO_VERSION`, `tool_version`). `GOVERSION` will not match.
+2. **File type** — the manager covers Dockerfiles, `Makefile`, `scripts/*.sh`, and `.github/**/*.yml`. Variables in other files (e.g. `versions.yaml`) need an additional `customManagers` entry in `renovate.json`.
+3. **Line adjacency** — the `# renovate:` annotation must be on the line directly above the variable assignment with no blank lines between them.
+4. **Datasource name** — use the exact Renovate datasource identifier (e.g. `github-releases`, `docker`, `pypi`, `npm`). An invalid datasource causes Renovate to silently skip the match.
+
+Use dry-run mode to diagnose without creating PRs.
 
 ### Dry run (no PRs created)
 
