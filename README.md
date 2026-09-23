@@ -35,7 +35,7 @@ Shared Renovate Bot presets and a reusable GitHub Actions workflow for automated
 
 Applied to every repo. Inherits `config:recommended` and layers these policies:
 
-- **No release-age delay** — `minimumReleaseAge: "0 days"` disables waiting and lets Renovate clear existing pending stability checks on its next run. Using `null` can leave those old checks pending. Consumers can override the shared policy explicitly.
+- **No release-age delay** — `minimumReleaseAge: "0 days"` disables waiting; Renovate normalizes it to `null`. Existing pending checks can remain on old commits: use Renovate's rebase/retry control and verify the new head and fresh CI. Consumers can override the shared policy explicitly.
 - **Human merges by default** — automatic merging is disabled; review and relevant CI determine readiness. Explicit consumer overrides remain possible. Any future automatic-merge policy needs its own safeguards.
 - **Vulnerability alerts** — enabled without a release-age delay; the separate CVE process is unchanged.
 - **Patch + minor grouping** — all non-security patch and minor updates batched into one PR
