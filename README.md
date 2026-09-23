@@ -35,8 +35,9 @@ Shared Renovate Bot presets and a reusable GitHub Actions workflow for automated
 
 Applied to every repo. Inherits `config:recommended` and layers these policies:
 
-- **14-day minimum release age** — new versions must be published for 14 days before Renovate proposes them
-- **Security bypass** — vulnerability patches skip the 14-day wait and are grouped into a dedicated security PR
+- **No release-age delay** — `minimumReleaseAge: "0 days"` disables waiting and lets Renovate clear existing pending stability checks on its next run. Using `null` can leave those old checks pending. Consumers can override the shared policy explicitly.
+- **Human merges by default** — automatic merging is disabled; review and relevant CI determine readiness. Explicit consumer overrides remain possible. Any future automatic-merge policy needs its own safeguards.
+- **Vulnerability alerts** — enabled without a release-age delay; the separate CVE process is unchanged.
 - **Patch + minor grouping** — all non-security patch and minor updates batched into one PR
 - **Rate limits** — max 10 concurrent PRs, 5 per hour
 - **OSV vulnerability alerts** — enabled
