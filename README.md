@@ -15,6 +15,7 @@ Shared Renovate Bot presets and a reusable GitHub Actions workflow for automated
 | `.github/workflows/renovate.yml` | Reusable workflow called by all repos |
 | `.github/workflows/deploy.yml` | One-click onboarding for new repos |
 | `.github/workflows/self-renovate.yml` | Keeps this repo's own deps updated |
+| [`.github/actions/auto-approve-renovate`](.github/actions/auto-approve-renovate/README.md) | Shared App approval for verified Renovate PRs |
 
 ## Installing Renovate into a Repository
 
