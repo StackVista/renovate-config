@@ -129,6 +129,12 @@
       "matchJsonata": ["$not(isVulnerabilityAlert = true or $exists(vulnerabilityFixVersion))"],
       "enabled": false,
       "description": "Keep indirect lookups available for advisory detection; suppress only ordinary updates."
+    },
+    {
+      "description": "Skip AWS SDK changelogs because GitHub tag queries time out",
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["github.com/aws/aws-sdk-go-v2{,/**}"],
+      "fetchChangeLogs": "off"
     }
   ]
 }
