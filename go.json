@@ -26,6 +26,12 @@
       "matchCategories": ["!security"],
       "groupName": "Go tools",
       "groupSlug": "go-tools"
+    },
+    {
+      "description": "Skip AWS SDK changelogs because GitHub tag queries time out",
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["github.com/aws/aws-sdk-go-v2{,/**}"],
+      "fetchChangeLogs": "off"
     }
   ],
   "postUpdateOptions": ["gomodTidy"]
