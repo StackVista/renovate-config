@@ -4,9 +4,10 @@
   "labels": ["dependencies"],
   "minimumReleaseAge": "0 days",
   "automerge": false,
+  "rebaseWhen": "conflicted",
   "dependencyDashboard": false,
   "prCreation": "immediate",
-  "prConcurrentLimit": 10,
+  "prConcurrentLimit": 0,
   "prHourlyLimit": 5,
   "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
@@ -37,10 +38,35 @@
       "groupSlug": "all-patch-minor"
     },
     {
-      "matchCategories": ["security"],
-      "groupName": "security patches",
-      "groupSlug": "security",
-      "minimumReleaseAge": null
+      "matchManagers": ["github-actions", "custom.regex"],
+      "groupName": null,
+      "groupSlug": null
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["action"],
+      "matchUpdateTypes": ["patch", "minor", "digest", "pin", "pinDigest"],
+      "groupName": "GitHub Actions",
+      "groupSlug": "github-actions",
+      "minimumReleaseAge": "7 days",
+      "internalChecksFilter": "strict"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "labels": ["dependencies/major"],
+      "addLabels": ["dependencies/major"],
+      "groupName": null,
+      "groupSlug": null,
+      "prPriority": -1
+    },
+    {
+      "matchUpdateTypes": ["patch"],
+      "prPriority": 10
+    },
+    {
+      "matchJsonata": ["isVulnerabilityAlert = true or $exists(vulnerabilityFixVersion)"],
+      "minimumReleaseAge": null,
+      "prPriority": 20
     }
   ],
   "schedule": ["at any time"]
