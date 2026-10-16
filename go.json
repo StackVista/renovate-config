@@ -1,32 +1,134 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
+  "postUpdateOptions": ["gomodTidy"],
   "packageRules": [
     {
       "matchManagers": ["gomod"],
-      "matchCategories": ["!security"],
-      "groupName": "Go module dependencies",
-      "groupSlug": "go-deps"
-    },
-    {
-      "matchManagers": ["gomod"],
       "matchDepTypes": ["golang", "toolchain"],
-      "matchCategories": ["!security"],
+      "rangeStrategy": "bump",
       "groupName": "Go toolchain",
-      "groupSlug": "go-toolchain"
-    },
-    {
-      "matchManagers": ["gomod"],
-      "matchDepTypes": ["toolchain"],
-      "matchUpdateTypes": ["patch"],
+      "groupSlug": "go-toolchain",
       "minimumReleaseAge": null
     },
     {
       "matchManagers": ["gomod"],
-      "matchDepTypes": ["tool"],
-      "matchCategories": ["!security"],
-      "groupName": "Go tools",
-      "groupSlug": "go-tools"
+      "matchDepTypes": ["golang", "toolchain"],
+      "matchUpdateTypes": ["patch"],
+      "groupName": "Go build environment",
+      "groupSlug": "go-build-environment"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require", "indirect", "replace"],
+      "enabled": true,
+      "separateMinorPatch": true,
+      "constraintsFiltering": "strict",
+      "constraintsVersioning": {
+        "%goMod": "npm"
+      }
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require", "indirect", "replace"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "Go libraries",
+      "groupSlug": "go-libraries"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require", "indirect", "replace"],
+      "matchUpdateTypes": ["digest"],
+      "groupName": "Go library revisions",
+      "groupSlug": "go-library-revisions"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require", "indirect", "replace"],
+      "matchPackageNames": ["k8s.io/**", "sigs.k8s.io/**"],
+      "matchUpdateTypes": ["patch", "minor", "major"],
+      "groupName": "Kubernetes Go modules",
+      "groupSlug": "kubernetes-go-modules"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require", "indirect", "replace"],
+      "matchPackageNames": ["github.com/aws/**"],
+      "matchUpdateTypes": ["patch", "minor", "major"],
+      "groupName": "AWS Go modules",
+      "groupSlug": "aws-go-modules"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require", "indirect", "replace"],
+      "matchPackageNames": ["github.com/Azure/**"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "Azure Go modules",
+      "groupSlug": "azure-go-modules"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require", "indirect", "replace"],
+      "matchPackageNames": ["go.opentelemetry.io/**"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "OpenTelemetry Go modules",
+      "groupSlug": "opentelemetry-go-modules"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require", "indirect", "replace"],
+      "matchPackageNames": ["golang.org/x/**"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "golang.org/x Go modules",
+      "groupSlug": "golang-x-go-modules"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require", "indirect", "replace"],
+      "matchPackageNames": ["k8s.io/**", "sigs.k8s.io/**"],
+      "matchUpdateTypes": ["digest"],
+      "groupName": "Kubernetes Go module revisions",
+      "groupSlug": "kubernetes-go-module-revisions"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require", "indirect", "replace"],
+      "matchPackageNames": ["github.com/aws/**"],
+      "matchUpdateTypes": ["digest"],
+      "groupName": "AWS Go module revisions",
+      "groupSlug": "aws-go-module-revisions"
+    },
+    {
+      "matchManagers": ["github-actions", "custom.regex"],
+      "matchPackageNames": ["golangci/golangci-lint", "goreleaser/goreleaser", "github.com/google/go-licenses", "github.com/google/go-licenses/v2", "golang.org/x/vuln"],
+      "matchUpdateTypes": ["patch", "minor", "digest", "pin", "pinDigest"],
+      "groupName": "CI tools",
+      "groupSlug": "ci-tools"
+    },
+    {
+      "matchManagers": ["github-actions", "custom.regex"],
+      "matchPackageNames": ["goreleaser/goreleaser"],
+      "matchUpdateTypes": ["patch"],
+      "groupName": "Go build environment",
+      "groupSlug": "go-build-environment",
+      "minimumReleaseAge": null
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["quay.io/stackstate/goreleaser", "registry.tooling.stackstate.io/quay/stackstate/goreleaser"],
+      "matchUpdateTypes": ["patch", "digest", "pinDigest"],
+      "groupName": "Go build environment",
+      "groupSlug": "go-build-environment",
+      "minimumReleaseAge": null
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["indirect"],
+      "matchUpdateTypes": ["major", "minor", "patch", "pin", "digest", "pinDigest", "lockFileMaintenance", "rollback", "replacement"],
+      "matchJsonata": ["$not(isVulnerabilityAlert = true or $exists(vulnerabilityFixVersion))"],
+      "enabled": false,
+      "description": "Keep indirect lookups available for advisory detection; suppress only ordinary updates."
     }
-  ],
-  "postUpdateOptions": ["gomodTidy"]
+  ]
 }

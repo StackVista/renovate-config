@@ -1,0 +1,59 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "automergeType": "pr",
+  "platformAutomerge": true,
+  "packageRules": [
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require", "indirect", "replace"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true,
+      "rebaseWhen": "behind-base-branch"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["golang", "toolchain"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "rebaseWhen": "behind-base-branch"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["action"],
+      "matchUpdateTypes": ["patch", "minor", "digest", "pin", "pinDigest"],
+      "automerge": true,
+      "rebaseWhen": "behind-base-branch"
+    },
+    {
+      "matchManagers": ["github-actions", "custom.regex"],
+      "matchPackageNames": ["goreleaser/goreleaser"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "rebaseWhen": "behind-base-branch"
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["patch", "digest", "pinDigest"],
+      "automerge": true,
+      "rebaseWhen": "behind-base-branch"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["k8s.io/**", "sigs.k8s.io/**"],
+      "matchUpdateTypes": ["minor"],
+      "automerge": false,
+      "rebaseWhen": "conflicted"
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "matchDepTypes": ["syntax"],
+      "automerge": false,
+      "rebaseWhen": "conflicted"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "rebaseWhen": "conflicted"
+    }
+  ]
+}

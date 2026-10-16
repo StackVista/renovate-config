@@ -2,10 +2,51 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "packageRules": [
     {
-      "matchManagers": ["dockerfile", "docker-compose"],
-      "matchCategories": ["!security"],
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["patch", "minor", "digest", "pin", "pinDigest"],
       "groupName": "Docker base images",
       "groupSlug": "docker"
+    },
+    {
+      "matchDatasources": ["docker"],
+      "minimumReleaseAge": "0 days"
+    },
+    {
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "pinDigests": true
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": [
+        "registry.suse.com/bci/**",
+        "registry.tooling.stackstate.io/suse/bci/**"
+      ],
+      "versioning": "loose"
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": [
+        "quay.io/stackstate/goreleaser",
+        "registry.tooling.stackstate.io/quay/stackstate/goreleaser"
+      ],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-so(?<build>\\d+)$"
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": [
+        "quay.io/stackstate/goreleaser",
+        "registry.tooling.stackstate.io/quay/stackstate/goreleaser"
+      ],
+      "matchUpdateTypes": ["patch", "digest", "pinDigest"],
+      "groupName": "Go build environment",
+      "groupSlug": "go-build-environment"
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "matchDepTypes": ["syntax"],
+      "groupName": "Dockerfile frontend",
+      "groupSlug": "dockerfile-frontend",
+      "pinDigests": false
     }
   ]
 }

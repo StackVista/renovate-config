@@ -9,6 +9,7 @@ Shared Renovate Bot presets and a reusable GitHub Actions workflow for automated
 | `default.json` | Org-wide default preset (extends by all repos) |
 | `go.json` | Go module dependencies and toolchain preset |
 | `docker.json` | Docker base image preset |
+| `automerge.json` | Optional automatic merging after required checks and App approval |
 | `node.json` | Node/npm ecosystem preset |
 | `java.json` | Java/Maven/Gradle/SBT preset |
 | `files/renovate-caller.yml` | Caller workflow template copied to target repos |
@@ -28,7 +29,7 @@ Shared Renovate Bot presets and a reusable GitHub Actions workflow for automated
 4. The workflow opens a PR (`chore/onboard-renovate`) in the target repo with `renovate.json` and `.github/workflows/renovate.yml` pre-configured.
 5. Review and merge the PR. Renovate runs on its next scheduled trigger.
 
-`RENOVATE_GH_APP_CLIENT_ID` (org variable) and `RENOVATE_GH_APP_PRIVATE_KEY` (org secret) are inherited automatically by all repos in the StackVista org — no per-repo setup is needed.
+Check App installation access and the visibility of `RENOVATE_GH_APP_CLIENT_ID` and `RENOVATE_GH_APP_PRIVATE_KEY` for the target repository. The updater App needs commit-status write access and Dependabot-alert read access. Explicit token permission inputs must retain these grants.
 
 ## Presets
 
@@ -37,10 +38,11 @@ Shared Renovate Bot presets and a reusable GitHub Actions workflow for automated
 Applied to every repo. Inherits `config:recommended` and layers these policies:
 
 - **No release-age delay** — `minimumReleaseAge: "0 days"` disables waiting and lets Renovate clear existing pending stability checks on its next run. Using `null` can leave those old checks pending. Consumers can override the shared policy explicitly.
-- **Human merges by default** — automatic merging is disabled; review and relevant CI determine readiness. Explicit consumer overrides remain possible. Any future automatic-merge policy needs its own safeguards.
-- **Vulnerability alerts** — enabled without a release-age delay; the separate CVE process is unchanged.
-- **Patch + minor grouping** — all non-security patch and minor updates batched into one PR
-- **Rate limits** — max 10 concurrent PRs, 5 per hour
+- **Human merges by default** — ecosystem presets do not enable automatic merging. Add `:automerge` separately after configuring required checks and the approval App.
+- **Vulnerability alerts** — GitHub alerts and OSV are enabled. Known fixes bypass the release-age delay and have priority 20.
+- **Grouping** — patch and minor updates share a fallback group. Ecosystem and GitHub Actions rules replace it with specific groups.
+- **Priorities and labels** — patches have priority 10. Majors have priority -1 and use `dependencies/major` instead of `dependencies`. Security majors also keep `security`.
+- **Rate limits** — no concurrent PR cap, with five new PRs per hour.
 - **OSV vulnerability alerts** — enabled
 - **Regex custom manager** — picks up version variables annotated with `# renovate:` comments in Dockerfiles, Makefiles, shell scripts, and workflow YAML. Two constraints apply:
   1. The annotation comment must be on the line immediately before the variable assignment.
@@ -79,12 +81,67 @@ Applied to every repo. Inherits `config:recommended` and layers these policies:
 
 ### `go.json`
 
-- Groups Go module dependencies, Go toolchain, and Go tool entries into separate PRs
-- Runs `go mod tidy` after every update
+- Separates library patches from minors. Kubernetes and AWS modules have family groups.
+- Groups major migrations for Kubernetes, AWS, Azure, OpenTelemetry and `golang.org/x`. Other majors remain individual.
+- Keeps indirect lookups enabled for advisories, but suppresses ordinary independent indirect updates.
+- Waits seven days for routine releases, including candidates with missing timestamps. Known vulnerability fixes bypass this delay.
+- Applies strict Go requirement filtering with range-aware `%goMod` constraints.
+- Groups compiler patches with compatible GoReleaser patches and builder-image refreshes, without a release-age delay.
+- Runs `go mod tidy` after updates.
+
+Consumers must supply their approved compiler bounds. Keep toolchain downloads disabled in CI and check the compiler embedded in released binaries. Dependency-specific bounds, such as coupled kops/cloud modules or delegated kube-openapi revisions, remain local.
 
 ### `docker.json`
 
-- Groups all `FROM` line updates (Dockerfile and docker-compose) into one PR
+- Groups ordinary image inputs and pins Dockerfile and Compose manifest digests.
+- Compares full SUSE BCI tags and numeric `-so` rebuild tags for the shared GoReleaser image.
+- Separates Dockerfile frontend updates from base images.
+- Applies no release-age delay to images.
+
+Consumers retain full release tags and set approved operating-system and runtime bounds. Custom tag formats, registry credentials, checksums and post-upgrade commands remain local.
+
+`docker-images` is an exception: it builds many independent images. Keep its per-image groups, release bounds, branch names and metadata/publication overrides in that repository.
+
+### `automerge.json`
+
+This preset opts into PR automerge through GitHub after required checks and App approval.
+Eligible updates include library patches and minors, compiler patches, compatible GitHub Actions references, GoReleaser patches and image patch/digest/pinDigest updates.
+Kubernetes minors, all majors, Go module revisions, other CI tools and Dockerfile frontends require human review.
+Automatic groups refresh behind the base branch; manual groups rebase on conflicts.
+
+Include the base preset, selected ecosystem presets, then `:automerge`.
+Consumer overrides come last. For example:
+
+```json
+{
+  "extends": [
+    "github>StackVista/renovate-config",
+    "github>StackVista/renovate-config:docker",
+    "github>StackVista/renovate-config:go",
+    "github>StackVista/renovate-config:automerge"
+  ],
+  "packageRules": [
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["golang", "toolchain"],
+      "allowedVersions": "/^1\\.26\\./"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require", "indirect", "replace"],
+      "constraints": {"%goMod": "<1.27.0"}
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["registry.suse.com/bci/bci-base"],
+      "allowedVersions": "/^15\\.7\\./"
+    }
+  ]
+}
+```
+
+These bounds are examples. Choose the compiler and operating-system lines approved for the consumer.
+Omit `:automerge` to retain human merges with the same selection and grouping policy.
 
 ### `node.json`
 
@@ -143,7 +200,7 @@ Up to 5 registry slots are available. Credentials can come from secrets or (for 
 
 ### Prevent major updates for a specific dependency
 
-The shared preset allows patch and minor updates. To block major version bumps for a dependency that requires manual migration:
+The shared preset allows major updates for human review. To block a dependency's major version bumps:
 
 ```json
 {
@@ -202,7 +259,7 @@ Same as excluding, but the intent is to stay on a specific version intentionally
 
 ### Allow minor updates for a specific package
 
-The shared preset groups patch and minor together. To explicitly allow minor updates for a package where you are comfortable with it (this is already the default behaviour, but useful to document alongside `matchUpdateTypes`):
+Go library patches and minors already have separate groups. A consumer can select both update types for a package-specific rule:
 
 ```json
 {
@@ -217,7 +274,7 @@ The shared preset groups patch and minor together. To explicitly allow minor upd
 
 ### Dependency appears in the wrong PR group
 
-Renovate's grouping rules are applied in order; the last matching rule wins. If a dependency lands in the wrong group (e.g. it gets grouped with security patches but it is not a CVE), add an explicit rule that overrides the group for that package:
+Renovate applies grouping rules in order; the last matching rule wins. To change a dependency's group, add a consumer rule:
 
 ```json
 {
@@ -346,4 +403,6 @@ make unit-test
 make test
 ```
 
-Tests live in `tests/` — fixtures in `tests/fixtures/`, script unit tests in `tests/scripts/`.
+Tests live in `tests/`: config fixtures, deployment script tests and `policy.cjs`.
+The policy checks load local presets and use the installed Renovate engine for lookup, advisory rules and branch generation.
+They cover manual and automerge compositions, compiler bounds, indirect filtering, release-age checks, family grouping and mixed image groups.

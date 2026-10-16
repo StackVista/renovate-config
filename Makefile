@@ -14,6 +14,7 @@ unit-test:
 	@tests/scripts/test-generate-renovate-config.sh
 	@tests/scripts/test-setup-target-repo.sh
 	@python3 -m unittest discover -s .github/actions/auto-approve-renovate -p 'test_*.py'
+	@node tests/policy.cjs
 	@echo ""
 	@echo "All unit tests passed."
 
