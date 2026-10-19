@@ -58,6 +58,7 @@ CONTENT=$(cat "$OUT")
 assert_contains "includes default preset" "local>StackVista/renovate-config" "$CONTENT"
 assert_contains "includes go preset" "local>StackVista/renovate-config:go" "$CONTENT"
 assert_not_contains "no docker preset" "renovate-config:docker" "$CONTENT"
+assert_not_contains "automerge requires explicit selection" "renovate-config:automerge" "$CONTENT"
 assert_contains "has schema" 'renovate-schema.json' "$CONTENT"
 # Verify valid JSON
 python3 -m json.tool "$OUT" > /dev/null 2>&1
@@ -73,6 +74,13 @@ assert_contains "includes docker preset" "renovate-config:docker" "$CONTENT"
 assert_contains "includes node preset" "renovate-config:node" "$CONTENT"
 python3 -m json.tool "$OUT" > /dev/null 2>&1
 assert_eq "output is valid JSON" "0" "$?"
+
+echo "Test: optional automerge preserves preset order"
+OUT="$TMPDIR_TEST/automerge.json"
+"$SCRIPT" "docker,go,automerge" "$OUT" > /dev/null
+EXTENDS=$(python3 -c "import json; print(','.join(json.load(open('$OUT'))['extends']))")
+assert_eq "selected presets retain order" \
+  "local>StackVista/renovate-config,local>StackVista/renovate-config:docker,local>StackVista/renovate-config:go,local>StackVista/renovate-config:automerge" "$EXTENDS"
 
 # --- Test: ecosystems with whitespace ---
 echo "Test: ecosystems with whitespace"
