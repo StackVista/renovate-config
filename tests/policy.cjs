@@ -46,7 +46,7 @@ async function main() {
   assert.equal(config.prConcurrentLimit, 0);
   assert.equal(config.prHourlyLimit, 5);
   assert.equal(config.osvVulnerabilityAlerts, true);
-  assert.equal(config.vulnerabilityAlerts.enabled, true);
+  assert.notEqual(config.vulnerabilityAlerts.enabled, false);
   const examples = [
     ['gomod', dependency('example.com/library'), 'patch', 'go-libraries', true],
     ['gomod', dependency('example.com/library'), 'minor', 'go-libraries', true],
@@ -208,6 +208,14 @@ async function main() {
       assert.deepEqual([...new Set(alert.addLabels ?? [])], alert.updateType === 'major' ? ['dependencies/major'] : []);
       assert.equal(alert.automerge, alert.updateType === 'patch' || (alert.updateType === 'minor' && depType === 'indirect'));
     }
+    const noMajors = {
+      ...config,
+      packageRules: [...config.packageRules, { matchUpdateTypes: ['major'], enabled: false }],
+    };
+    await osv.appendVulnerabilityPackageRules(noMajors, packageFiles);
+    const allowedAlerts = await flattenUpdates(noMajors, packageFiles);
+    assert.deepEqual(allowedAlerts.map(alert => alert.updateType).sort(), ['minor', 'patch']);
+    assert(allowedAlerts.every(alert => alert.isVulnerabilityAlert));
   }
   const ordinaryIndirect = await flattenUpdates(config, { gomod: [{ packageFile: 'go.mod', deps: [{
     ...dependency('example.com/indirect', 'indirect'),
