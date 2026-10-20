@@ -38,6 +38,7 @@ Check App installation access and the visibility of `RENOVATE_GH_APP_CLIENT_ID` 
 Applied to every repo. Inherits `config:recommended` and layers these policies:
 
 - **No release-age delay** — `minimumReleaseAge: "0 days"` disables waiting and lets Renovate clear existing pending stability checks on its next run. Using `null` can leave those old checks pending. Consumers can override the shared policy explicitly.
+- **StackVista-owned dependencies** — repository URLs and package namespaces bypass release-age delays, including those inherited from ecosystem presets. This covers internal releases, actions, Go modules and images, including legacy GitLab sources and proxied images.
 - **Human merges by default** — ecosystem presets do not enable automatic merging. Add `:automerge` separately after configuring required checks and the approval App.
 - **Vulnerability alerts** — GitHub alerts and OSV are enabled. Known fixes bypass the release-age delay and have priority 20.
 - **Grouping** — patch and minor updates share a fallback group. Ecosystem and GitHub Actions rules replace it with specific groups.
@@ -84,7 +85,7 @@ Applied to every repo. Inherits `config:recommended` and layers these policies:
 - Separates library patches from minors. Kubernetes and AWS modules have family groups.
 - Groups major migrations for Kubernetes, AWS, Azure, OpenTelemetry and `golang.org/x`. Other majors remain individual.
 - Keeps indirect lookups enabled for advisories, but suppresses ordinary independent indirect updates.
-- Waits seven days for routine releases, including candidates with missing timestamps. Known vulnerability fixes bypass this delay.
+- Waits seven days for third-party routine releases, including candidates with missing timestamps. StackVista-owned dependencies and known vulnerability fixes bypass this delay.
 - Applies strict Go requirement filtering with range-aware `%goMod` constraints.
 - Groups compiler patches with compatible GoReleaser patches and builder-image refreshes, without a release-age delay.
 - Runs `go mod tidy` after updates.
