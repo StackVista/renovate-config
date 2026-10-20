@@ -93,20 +93,61 @@ async function main() {
     assert.equal(action.minimumReleaseAge, '7 days');
     assert.equal(action.internalChecksFilter, 'strict');
   }
-  for (const [name, type, datasource, immediate] of [
+  for (const [name, type, datasource, immediate, sourceUrl] of [
     ['example.com/library', 'require', 'go', false],
     ['actions/checkout', 'action', 'github-tags', false],
     ['go', 'golang', 'golang-version', true],
     ['registry.suse.com/bci/bci-base', 'final', 'docker', true],
+    ['StackVista/stackstate-backup-cli', undefined, 'github-releases', true],
+    ['StackVista/sts-toolbox', undefined, 'github-tags', true],
+    ['stackvista/renovate-config/action', 'action', 'github-tags', true],
+    ['github.com/StackVista/sts-toolbox', 'require', 'go', true],
+    ['gitlab.com/stackvista/platform/library', 'require', 'go', true],
+    ['example.com/owned-library', 'require', 'go', true, 'https://github.com/stackvista/library'],
+    ['example.com/legacy-library', 'require', 'go', true, 'https://gitlab.com/stackvista/platform/library'],
+    ['StackVista-other/tool', undefined, 'github-releases', false],
+    ['github.com/StackVista-other/library', 'require', 'go', false],
+    ['example.com/unowned-library', 'require', 'go', false, 'https://github.com/StackVista-other/library'],
+    ['example.com/unowned-legacy-library', 'require', 'go', false, 'https://gitlab.com/stackvista-other/library'],
   ]) {
-    const manager = datasource === 'docker' ? 'dockerfile' : datasource === 'github-tags' ? 'github-actions' : 'gomod';
-    const policy = await applyPackageRules({ ...config, ...dependency(name, type, datasource), manager, ...update('patch') });
+    const manager = datasource === 'docker' ? 'dockerfile' : type === 'action' ? 'github-actions'
+      : datasource === 'go' || datasource === 'golang-version' ? 'gomod' : 'custom.regex';
+    const policy = await applyPackageRules({ ...config, ...dependency(name, type, datasource), manager, sourceUrl, ...update('patch') });
     const versioning = getVersioning(policy.versioning ?? getDefaultVersioning(datasource));
     for (const age of [1, 8, undefined]) {
       const releaseTimestamp = age === undefined ? undefined : new Date(Date.now() - age * 86400000).toISOString();
       const result = await filterInternalChecks(policy, versioning, 'patch', [{ version: '1.0.1', releaseTimestamp }]);
       assert.equal(result.pendingChecks, !immediate && age !== 8, `${name} age=${age}`);
     }
+  }
+  for (const presets of [[], ['go'], ['docker', 'go', 'automerge'], ['go', 'docker', 'automerge'], ['node', 'java']]) {
+    const selection = await compose(presets);
+    for (const type of ['patch', 'minor', 'major', 'digest']) {
+      const policy = await applyPackageRules({
+        ...selection, ...dependency('StackVista/sts-toolbox', undefined, 'github-tags'), manager: 'custom.regex', ...update(type),
+      });
+      assert.equal(policy.minimumReleaseAge, '0 days', `${presets} ${type}`);
+      assert.equal(policy.automerge, false, `${presets} ${type}`);
+    }
+    for (const name of [
+      'quay.io/stackstate/tool', 'ghcr.io/stackvista/tool', 'stackstate/tool', 'docker.io/stackstate/tool',
+      'registry.tooling.stackstate.io/quay/stackstate/tool', 'registry.tooling.stackstate.io/docker/stackstate/tool',
+      'registry.tooling.stackstate.io/ghcr/stackvista/tool',
+    ]) {
+      const policy = await applyPackageRules({
+        ...selection, ...dependency(name, 'final', 'docker'), manager: 'dockerfile', ...update('patch'),
+      });
+      assert.equal(policy.minimumReleaseAge, '0 days', `${presets} ${name}`);
+    }
+  }
+  for (const name of [
+    'quay.io/stackstate-other/tool', 'registry.tooling.stackstate.io/quay/prometheus/tool',
+    'registry.tooling.stackstate.io/ghcr/stackvista-other/tool',
+  ]) {
+    const policy = await applyPackageRules({
+      ...await compose(['go']), ...dependency(name, 'final', 'docker'), manager: 'dockerfile', ...update('patch'),
+    });
+    assert.equal(policy.minimumReleaseAge, '7 days', name);
   }
   getDatasourceFor('go').getReleases = async () => ({
     releases: [

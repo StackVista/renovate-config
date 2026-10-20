@@ -51,6 +51,23 @@
       "internalChecksFilter": "strict"
     },
     {
+      "matchSourceUrls": ["https://github.com/StackVista/**", "https://gitlab.com/stackvista/**"],
+      "minimumReleaseAge": "0 days"
+    },
+    {
+      "matchPackageNames": [
+        "StackVista/**",
+        "github.com/StackVista/**",
+        "gitlab.com/stackvista/**",
+        "quay.io/stackstate/**",
+        "ghcr.io/stackvista/**",
+        "stackstate/**",
+        "docker.io/stackstate/**",
+        "registry.tooling.stackstate.io/{quay/stackstate,docker/stackstate,ghcr/stackvista}/**"
+      ],
+      "minimumReleaseAge": "0 days"
+    },
+    {
       "matchUpdateTypes": ["major"],
       "labels": ["dependencies/major"],
       "addLabels": ["dependencies/major"],
