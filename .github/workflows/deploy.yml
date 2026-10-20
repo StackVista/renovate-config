@@ -26,9 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout renovate-config
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           path: config
+          persist-credentials: false
 
       - name: Generate GitHub App token
         id: app-token
@@ -42,20 +43,29 @@ jobs:
           permission-workflows: write
 
       - name: Checkout target repo
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: ${{ github.event.inputs.repository }}
           token: ${{ steps.app-token.outputs.token }}
           ref: ${{ github.event.inputs.base_branch }}
           path: target
+          persist-credentials: false
 
       - name: Generate renovate.json from ecosystems
-        run: config/scripts/deploy/generate-renovate-config.sh "${{ github.event.inputs.ecosystems }}" target/renovate.json
+        env:
+          ECOSYSTEMS: ${{ inputs.ecosystems }}
+          CONFIG_SHA: ${{ github.sha }}
+        run: config/scripts/deploy/generate-renovate-config.sh "${ECOSYSTEMS}" target/renovate.json "${CONFIG_SHA}"
 
       - name: Prepare target repo (copy workflow, remove dependabot)
-        run: config/scripts/deploy/setup-target-repo.sh config target
+        env:
+          CONFIG_SHA: ${{ github.sha }}
+        run: config/scripts/deploy/setup-target-repo.sh config target "${CONFIG_SHA}"
 
       - name: Create onboarding PR
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: config/scripts/deploy/create-onboarding-pr.sh target "${{ github.event.inputs.repository }}" "${{ github.event.inputs.base_branch }}" "${{ github.event.inputs.ecosystems }}"
+          REPOSITORY: ${{ inputs.repository }}
+          BASE_BRANCH: ${{ inputs.base_branch }}
+          ECOSYSTEMS: ${{ inputs.ecosystems }}
+        run: config/scripts/deploy/create-onboarding-pr.sh target "${REPOSITORY}" "${BASE_BRANCH}" "${ECOSYSTEMS}"

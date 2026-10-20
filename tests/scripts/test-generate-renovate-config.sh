@@ -8,6 +8,8 @@ SCRIPT="$SCRIPT_DIR/scripts/deploy/generate-renovate-config.sh"
 TMPDIR_TEST=$(mktemp -d)
 trap 'rm -rf "$TMPDIR_TEST"' EXIT
 
+CONFIG_SHA=$(git -C "$SCRIPT_DIR" rev-parse HEAD)
+
 pass=0
 fail=0
 
@@ -55,8 +57,8 @@ echo "Test: single ecosystem (go)"
 OUT="$TMPDIR_TEST/single.json"
 "$SCRIPT" "go" "$OUT" > /dev/null
 CONTENT=$(cat "$OUT")
-assert_contains "includes default preset" "local>StackVista/renovate-config" "$CONTENT"
-assert_contains "includes go preset" "local>StackVista/renovate-config:go" "$CONTENT"
+assert_contains "includes default preset" "github>StackVista/renovate-config#${CONFIG_SHA}" "$CONTENT"
+assert_contains "includes go preset" "github>StackVista/renovate-config:go#${CONFIG_SHA}" "$CONTENT"
 assert_not_contains "no docker preset" "renovate-config:docker" "$CONTENT"
 assert_not_contains "automerge requires explicit selection" "renovate-config:automerge" "$CONTENT"
 assert_contains "has schema" 'renovate-schema.json' "$CONTENT"
@@ -80,7 +82,7 @@ OUT="$TMPDIR_TEST/automerge.json"
 "$SCRIPT" "docker,go,automerge" "$OUT" > /dev/null
 EXTENDS=$(python3 -c "import json; print(','.join(json.load(open('$OUT'))['extends']))")
 assert_eq "selected presets retain order" \
-  "local>StackVista/renovate-config,local>StackVista/renovate-config:docker,local>StackVista/renovate-config:go,local>StackVista/renovate-config:automerge" "$EXTENDS"
+  "github>StackVista/renovate-config#${CONFIG_SHA},github>StackVista/renovate-config:docker#${CONFIG_SHA},github>StackVista/renovate-config:go#${CONFIG_SHA},github>StackVista/renovate-config:automerge#${CONFIG_SHA}" "$EXTENDS"
 
 # --- Test: ecosystems with whitespace ---
 echo "Test: ecosystems with whitespace"
@@ -107,7 +109,31 @@ OUT="$TMPDIR_TEST/default-check.json"
 CONTENT=$(cat "$OUT")
 # The first extends entry should be the bare default (no colon suffix)
 FIRST_EXTEND=$(python3 -c "import json; print(json.load(open('$OUT'))['extends'][0])")
-assert_eq "first extend is default preset" "local>StackVista/renovate-config" "$FIRST_EXTEND"
+assert_eq "first extend is default preset" "github>StackVista/renovate-config#${CONFIG_SHA}" "$FIRST_EXTEND"
+
+echo "Test: explicit revision pins every preset"
+EXPLICIT_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+"$SCRIPT" "go,docker,automerge" "$TMPDIR_TEST/explicit.json" "$EXPLICIT_SHA" > /dev/null
+python3 - "$TMPDIR_TEST/explicit.json" "$EXPLICIT_SHA" <<'PYTEST'
+import json
+import sys
+refs = json.load(open(sys.argv[1]))['extends']
+assert len(refs) == 4
+assert all(ref.endswith('#' + sys.argv[2]) for ref in refs)
+PYTEST
+assert_eq "all presets use the explicit revision" "0" "$?"
+for value in main short; do
+  if "$SCRIPT" "go" "$TMPDIR_TEST/invalid.json" "$value" 2>/dev/null; then
+    fail=$((fail + 1))
+  else
+    pass=$((pass + 1))
+  fi
+done
+if "$SCRIPT" "unknown" "$TMPDIR_TEST/invalid.json" "$EXPLICIT_SHA" 2>/dev/null; then
+  fail=$((fail + 1))
+else
+  pass=$((pass + 1))
+fi
 
 # --- Test: missing arguments ---
 echo "Test: missing arguments exits with error"
