@@ -52,13 +52,14 @@ TREE_ENTRIES=$(jq -n \
     {"path": ".github/workflows/renovate.yml",    "mode": "100644", "type": "blob", "sha": $rw}
   ]')
 
-# Mark dependabot.yml for deletion if it exists in the remote repo
-if gh api "repos/${REPOSITORY}/contents/.github/dependabot.yml" --silent 2>/dev/null; then
-  echo "Scheduling removal of .github/dependabot.yml"
-  TREE_ENTRIES=$(jq -c \
-    '. + [{"path": ".github/dependabot.yml", "mode": "100644", "type": "blob", "sha": null}]' \
-    <<< "$TREE_ENTRIES")
-fi
+for file in .github/dependabot.yml .github/dependabot.yaml; do
+  if gh api "repos/${REPOSITORY}/contents/${file}" --silent 2>/dev/null; then
+    echo "Scheduling removal of ${file}"
+    TREE_ENTRIES=$(jq -c --arg path "$file" \
+      '. + [{"path": $path, "mode": "100644", "type": "blob", "sha": null}]' \
+      <<< "$TREE_ENTRIES")
+  fi
+done
 
 # --- Create tree ---
 NEW_TREE_SHA=$(gh api "repos/${REPOSITORY}/git/trees" \
@@ -117,7 +118,7 @@ gh pr create \
 
 - Adds \`renovate.json\` extending shared StackVista presets ($ECOSYSTEMS)
 - Adds \`.github/workflows/renovate.yml\` caller workflow (runs every 6 hours)
-- Removes \`dependabot.yml\` if present
+- Removes Dependabot update configuration if present
 
 Presets: \`local>StackVista/renovate-config\`, ecosystems: \`$ECOSYSTEMS\`
 

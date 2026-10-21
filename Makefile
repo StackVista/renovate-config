@@ -13,6 +13,7 @@ unit-test:
 	@echo "Running unit tests..."
 	@tests/scripts/test-generate-renovate-config.sh
 	@tests/scripts/test-setup-target-repo.sh
+	@python3 -m unittest discover -s tests/scripts -p 'test_*.py'
 	@python3 -m unittest discover -s .github/actions/auto-approve-renovate -p 'test_*.py'
 	@node tests/policy.cjs $(RENOVATE_DIST)
 	@echo ""
