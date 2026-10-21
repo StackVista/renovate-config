@@ -21,7 +21,12 @@ if [[ ! "$CONFIG_SHA" =~ ^[a-f0-9]{40}$ ]]; then
   echo "Config revision must be a full commit SHA" >&2
   exit 1
 fi
-EXTENDS="\"github>StackVista/renovate-config#${CONFIG_SHA}\""
+CONFIG_TAG="$(git -C "$CONFIG_DIR" describe --tags --exact-match "$CONFIG_SHA" 2>/dev/null || true)"
+CONFIG_REF="$CONFIG_SHA"
+if [[ "$CONFIG_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  CONFIG_REF="$CONFIG_TAG"
+fi
+EXTENDS="\"github>StackVista/renovate-config#${CONFIG_REF}\""
 
 IFS=',' read -ra PRESETS <<< "$ECOSYSTEMS"
 for preset in "${PRESETS[@]}"; do
@@ -31,7 +36,7 @@ for preset in "${PRESETS[@]}"; do
       echo "Unknown ecosystem preset" >&2
       exit 1
     fi
-    EXTENDS="$EXTENDS, \"github>StackVista/renovate-config:$preset#${CONFIG_SHA}\""
+    EXTENDS="$EXTENDS, \"github>StackVista/renovate-config:$preset#${CONFIG_REF}\""
   fi
 done
 
@@ -42,14 +47,8 @@ cat > "$OUTPUT_FILE" << EOF
 }
 EOF
 
-CONFIG_TAG="$(git -C "$CONFIG_DIR" describe --tags --exact-match "$CONFIG_SHA" 2>/dev/null || true)"
-if [[ "$CONFIG_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  jq --arg release "$CONFIG_TAG" --slurpfile updater "$CONFIG_DIR/files/release-updates.json" \
-    '. + $updater[0] + {description: ("Renovate release " + $release)}' \
-    "$OUTPUT_FILE" > "$OUTPUT_FILE.tmp"
-  mv "$OUTPUT_FILE.tmp" "$OUTPUT_FILE"
-elif command -v jq &> /dev/null; then
-  jq . "$OUTPUT_FILE" > "$OUTPUT_FILE.tmp" && mv "$OUTPUT_FILE.tmp" "$OUTPUT_FILE"
-fi
+jq --slurpfile updates "$CONFIG_DIR/files/release-updates.json" \
+  '. + $updates[0]' "$OUTPUT_FILE" > "$OUTPUT_FILE.tmp"
+mv "$OUTPUT_FILE.tmp" "$OUTPUT_FILE"
 
 echo "Generated $OUTPUT_FILE with ecosystems: $ECOSYSTEMS"

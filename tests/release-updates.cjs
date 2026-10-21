@@ -15,12 +15,11 @@ const { getDatasourceFor } = load('modules/datasource/common.js');
 const { lookupUpdates } = load('workers/repository/process/lookup/index.js');
 const { branchifyUpgrades } = load('workers/repository/updates/branchify.js');
 const { doAutoReplace } = load('workers/repository/update/branch/auto-replace.js');
-const regex = load('modules/manager/custom/regex/index.js');
+const presets = load('modules/manager/renovate-config/index.js');
 const actions = load('modules/manager/github-actions/index.js');
 const repo = path.resolve(__dirname, '..');
 const read = file => JSON.parse(fs.readFileSync(path.join(repo, file)));
 const updater = read('files/release-updates.json');
-const manager = updater.customManagers[0];
 const oldSha = '1'.repeat(40);
 const newSha = '2'.repeat(40);
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'renovate-release-'));
@@ -39,30 +38,33 @@ async function main() {
   }
   policy = mergeChildConfig(policy, { ...updater, semanticCommits: 'disabled' });
 
-  for (const prefix of ['local', 'github']) {
+  {
     const config = {
-      description: 'Renovate release v1.0.0',
-      extends: ['', ':go', ':automerge'].map(name => `${prefix}>StackVista/renovate-config${name}#${oldSha}`),
+      extends: ['', ':go', ':automerge'].map(name => `github>StackVista/renovate-config${name}#v1.0.0`),
       packageRules: [{
         matchPackageNames: ['unrelated'],
         allowedVersions: 'v1.0.0',
-        extends: [`github>StackVista/renovate-config:docker#${oldSha}`, `github>other/preset#${oldSha}`],
+        description: `Preserve unrelated ${oldSha} and v1.0.0`,
       }],
     };
     const content = JSON.stringify(config, null, 2) + '\n';
-    const files = { regex: [{ ...await regex.extractPackageFile(content, 'renovate.json', manager), packageFile: 'renovate.json' }],
+    const files = { 'renovate-config': [{ ...await presets.extractPackageFile(content, 'renovate.json'), packageFile: 'renovate.json' }],
       'github-actions': await Promise.all([
         '.github/workflows/renovate.yml',
         '.github/actions/auto-approve-renovate',
       ].map(async (target, index) => {
-        const content = `name: Test\non: push\njobs:\n  test:\n    uses: StackVista/renovate-config/${target}@${oldSha} # v1.0.0\n`;
+        const use = `StackVista/renovate-config/${target}@${oldSha} # v1.0.0`;
+        const content = index === 0
+          ? `name: Test\non: push\njobs:\n  test:\n    uses: ${use}\n`
+          : `name: Test\non: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ${use}\n`;
         const packageFile = `.github/workflows/consumer-${index}.yml`;
-        return { ...await actions.extractPackageFile(content, packageFile), packageFile, content };
+        const extracted = await actions.extractPackageFile(content, packageFile);
+        return { ...extracted, deps: extracted.deps.filter(dep => dep.depName === 'StackVista/renovate-config'), packageFile, content };
       })),
     };
     for (const [manager, packages] of Object.entries(files)) {
       for (const file of packages) {
-        assert.equal(file.deps.length, 1);
+        assert.equal(file.deps.length, manager === 'renovate-config' ? 3 : 1);
         for (const dep of file.deps) {
           dep.packageName ??= dep.depName;
           const config = await applyPackageRules({
@@ -71,28 +73,30 @@ async function main() {
           const { val, err } = (await lookupUpdates(config)).unwrap();
           assert.equal(err, undefined);
           assert.equal(val.updates.length, 1);
-          assert.equal(val.updates[0].newDigest, newSha);
+          assert.equal(val.updates[0].newVersion, 'v1.1.0');
+          if (manager === 'github-actions') assert.equal(val.updates[0].newDigest, newSha);
+          else assert.equal(val.updates[0].newDigest, undefined);
           dep.updates = val.updates;
         }
       }
     }
     const { branches } = await branchifyUpgrades({ ...policy, errors: [], warnings: [] }, files);
     assert.equal(branches.length, 1);
-    assert.equal(branches[0].upgrades.length, 3);
+    assert.equal(branches[0].upgrades.length, 5);
     assert.equal(branches[0].automerge, false);
+    const contents = new Map([
+      ['renovate.json', content],
+      ...files['github-actions'].map(file => [file.packageFile, file.content]),
+    ]);
     for (const upgrade of branches[0].upgrades) {
-      const before = upgrade.packageFile === 'renovate.json' ? content
-        : files['github-actions'].find(file => file.packageFile === upgrade.packageFile).content;
-      const after = await doAutoReplace(upgrade, before, false);
-      if (upgrade.packageFile === 'renovate.json') {
-        const expected = structuredClone(config);
-        expected.description = 'Renovate release v1.1.0';
-        expected.extends = expected.extends.map(ref => ref.replace(oldSha, newSha));
-        expected.packageRules[0].extends[0] = expected.packageRules[0].extends[0].replace(oldSha, newSha);
-        assert.deepEqual(JSON.parse(after), expected);
-      } else {
-        assert(after.includes(`@${newSha} # v1.1.0`));
-      }
+      const before = contents.get(upgrade.packageFile);
+      contents.set(upgrade.packageFile, await doAutoReplace(upgrade, before, false));
+    }
+    const expected = structuredClone(config);
+    expected.extends = expected.extends.map(ref => ref.replace('v1.0.0', 'v1.1.0'));
+    assert.deepEqual(JSON.parse(contents.get('renovate.json')), expected);
+    for (const file of files['github-actions']) {
+      assert(contents.get(file.packageFile).includes(`@${newSha} # v1.1.0`));
     }
   }
   const paused = mergeChildConfig(policy, {
@@ -101,7 +105,7 @@ async function main() {
       { ...updater.packageRules[0], enabled: true },
     ],
   });
-  for (const manager of ['regex', 'github-actions']) {
+  for (const manager of ['renovate-config', 'github-actions']) {
     for (const packageName of ['StackVista/renovate-config', 'StackVista/other']) {
       for (const updateType of ['patch', 'minor', 'major', 'digest']) {
         const result = await applyPackageRules({ ...paused, manager, packageName, updateType });
@@ -109,10 +113,12 @@ async function main() {
       }
     }
   }
-  assert.equal(await regex.extractPackageFile('{}', 'renovate.json', manager), null);
+  assert.equal(await presets.extractPackageFile('{}', 'renovate.json'), null);
+  const local = await presets.extractPackageFile(JSON.stringify({ extends: ['local>StackVista/renovate-config#v1.0.0'] }), 'renovate.json');
+  assert.equal(local.deps[0].skipReason, 'unsupported-datasource');
   const yaml = load('util/yaml.js').parseSingleYaml(fs.readFileSync(path.join(repo, '.github/workflows/deploy.yml'), 'utf8'));
   assert.equal(yaml.jobs.deploy.steps[0].with['fetch-depth'], 0);
-  console.log('PASS: released SHA pins, nested presets, grouped workflow/action updates and deployment tag fetching');
+  console.log('PASS: native preset tag updates, grouped workflow/action SHA updates and deployment tag fetching');
 }
 
 main().catch(error => { console.error(error); process.exitCode = 1; })

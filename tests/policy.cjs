@@ -41,7 +41,7 @@ async function main() {
     }
     return mergeChildConfig(config, { ...fixture, extends: [], semanticCommits: 'disabled' });
   }
-  const presets = fixture.extends.slice(1).map(value => value.split(':')[1]);
+  const presets = fixture.extends.slice(1).map(value => value.split('#')[0].split(':')[1]);
   const config = await compose(presets);
   assert.equal(config.prConcurrentLimit, 0);
   assert.equal(config.prHourlyLimit, 5);

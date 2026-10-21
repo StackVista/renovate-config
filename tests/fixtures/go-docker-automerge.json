@@ -1,10 +1,10 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "github>StackVista/renovate-config",
-    "github>StackVista/renovate-config:docker",
-    "github>StackVista/renovate-config:go",
-    "github>StackVista/renovate-config:automerge"
+    "github>StackVista/renovate-config#v1.0.0",
+    "github>StackVista/renovate-config:docker#v1.0.0",
+    "github>StackVista/renovate-config:go#v1.0.0",
+    "github>StackVista/renovate-config:automerge#v1.0.0"
   ],
   "packageRules": [
     {
