@@ -15,13 +15,23 @@ fi
 ECOSYSTEMS="$1"
 OUTPUT_FILE="$2"
 
-EXTENDS='"local>StackVista/renovate-config"'
+CONFIG_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+CONFIG_SHA="${3:-$(git -C "$CONFIG_DIR" rev-parse HEAD)}"
+if [[ ! "$CONFIG_SHA" =~ ^[a-f0-9]{40}$ ]]; then
+  echo "Config revision must be a full commit SHA" >&2
+  exit 1
+fi
+EXTENDS="\"github>StackVista/renovate-config#${CONFIG_SHA}\""
 
 IFS=',' read -ra PRESETS <<< "$ECOSYSTEMS"
 for preset in "${PRESETS[@]}"; do
   preset=$(echo "$preset" | xargs) # trim whitespace
   if [ -n "$preset" ]; then
-    EXTENDS="$EXTENDS, \"local>StackVista/renovate-config:$preset\""
+    if [[ ! "$preset" =~ ^(go|docker|node|java|automerge)$ ]]; then
+      echo "Unknown ecosystem preset" >&2
+      exit 1
+    fi
+    EXTENDS="$EXTENDS, \"github>StackVista/renovate-config:$preset#${CONFIG_SHA}\""
   fi
 done
 

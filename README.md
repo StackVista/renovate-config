@@ -20,14 +20,17 @@ Shared Renovate Bot presets and a reusable GitHub Actions workflow for automated
 
 ## Installing Renovate into a Repository
 
-1. Add the target repository to the **`renovate-update-app`** GitHub App installation (Settings → Developer settings → GitHub Apps → `renovate-update-app` → Repository access).
+The deploy workflow prepares consumer files; it does not provision App access or repository settings.
+Pin every shared preset, reusable workflow and approval action to the same full commit SHA.
+
+1. Add the target repository to the updater GitHub App installation.
 2. Go to **Actions → Deploy Renovate to repo** in this repository.
 3. Click **Run workflow** and fill in:
    - **repository** — e.g. `StackVista/my-repo`
    - **ecosystems** — comma-separated preset names: `go`, `docker`, `node`, `java` (any combination)
    - **base_branch** — default branch of the target repo (default: `main`)
 4. The workflow opens a PR (`chore/onboard-renovate`) in the target repo with `renovate.json` and `.github/workflows/renovate.yml` pre-configured.
-5. Review and merge the PR. Renovate runs on its next scheduled trigger.
+5. Configure the target repository and App access before merging the consumer PR. Renovate runs on its next scheduled trigger.
 
 Check App installation access and the visibility of `RENOVATE_GH_APP_CLIENT_ID` and `RENOVATE_GH_APP_PRIVATE_KEY` for the target repository. The updater App needs commit-status write access and Dependabot-alert read access. Explicit token permission inputs must retain these grants.
 
@@ -192,11 +195,11 @@ Up to 5 registry slots are available. Credentials can come from secrets or (for 
 ```yaml
     uses: StackVista/renovate-config/.github/workflows/renovate.yml@<SHA> # main
     with:
-      docker_registry_1: registry.tooling.stackstate.io
+      docker_registry_1: registry.example.com
       docker_registry_1_username: renovate-reader
     secrets:
       RENOVATE_GH_APP_PRIVATE_KEY: ${{ secrets.RENOVATE_GH_APP_PRIVATE_KEY }}
-      DOCKER_REGISTRY_1_PASSWORD: ${{ secrets.REGISTRY_TOOLING_PASSWORD }}
+      DOCKER_REGISTRY_1_PASSWORD: ${{ secrets.PRIVATE_REGISTRY_PASSWORD }}
 ```
 
 ### Prevent major updates for a specific dependency
@@ -329,61 +332,6 @@ Go to **Actions → Renovate** in the target repo, click **Run workflow**, and e
 
 Required secret: `RENOVATE_GH_APP_PRIVATE_KEY`.
 Optional secrets: `DOCKER_REGISTRY_N_PASSWORD` for slots 1–5.
-
-## Zizmor Fix: Granting Access to this Repo
-
-Zizmor fetches the content of referenced external workflow files to audit them. When a repo's workflow calls `StackVista/renovate-config/.github/workflows/renovate.yml`, Zizmor needs read access to this private repo. Without it, the audit fails.
-
-Fix: generate a short-lived GitHub App token scoped to `renovate-config` and pass it as `GH_TOKEN`. The **`zizmor-gh-app`** GitHub App is already configured with the necessary permissions and credentials — `ZIZMOR_GH_APP_CLIENT_ID` (org variable) and `ZIZMOR_GH_APP_PRIVATE_KEY` (org secret) are available in all repos.
-
-```yaml
-name: Workflow Security Audit
-
-on:
-  pull_request:
-    branches: [main]
-    paths:
-      - ".github/**"
-      - "zizmor.yml"
-  push:
-    branches: [main]
-    paths:
-      - ".github/**"
-      - "zizmor.yml"
-
-concurrency:
-  group: lint-workflows-${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  zizmor:
-    name: zizmor
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
-        id: app-token
-        with:
-          client-id: ${{ vars.ZIZMOR_GH_APP_CLIENT_ID }}
-          private-key: ${{ secrets.ZIZMOR_GH_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: "renovate-config"
-          permission-contents: read
-
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-        with:
-          persist-credentials: false
-
-      - name: Run zizmor security audit
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          pip install zizmor
-          zizmor .
-```
-
-To allow Zizmor to read additional private repos, add their names to `repositories:` (comma-separated).
 
 ## Development
 

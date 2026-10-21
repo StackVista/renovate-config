@@ -23,14 +23,20 @@ if [ ! -f "$CALLER_TEMPLATE" ]; then
   exit 1
 fi
 
-RENOVATE_CONFIG_SHA=$(git -C "$CONFIG_DIR" rev-parse HEAD)
+RENOVATE_CONFIG_SHA="${3:-$(git -C "$CONFIG_DIR" rev-parse HEAD)}"
+if [[ ! "$RENOVATE_CONFIG_SHA" =~ ^[a-f0-9]{40}$ ]]; then
+  echo "Config revision must be a full commit SHA" >&2
+  exit 1
+fi
 
 mkdir -p "$TARGET_DIR/.github/workflows"
 sed "s|StackVista/renovate-config/.github/workflows/renovate.yml@main|StackVista/renovate-config/.github/workflows/renovate.yml@${RENOVATE_CONFIG_SHA} # main|g" \
   "$CALLER_TEMPLATE" > "$TARGET_DIR/.github/workflows/renovate.yml"
 echo "Copied workflow caller to $TARGET_DIR/.github/workflows/renovate.yml (pinned to ${RENOVATE_CONFIG_SHA})"
 
-if [ -f "$TARGET_DIR/.github/dependabot.yml" ]; then
-  rm -f "$TARGET_DIR/.github/dependabot.yml"
-  echo "Removed $TARGET_DIR/.github/dependabot.yml"
-fi
+for file in .github/dependabot.yml .github/dependabot.yaml; do
+  if [ -f "$TARGET_DIR/$file" ]; then
+    rm -f "$TARGET_DIR/$file"
+    echo "Removed $file"
+  fi
+done

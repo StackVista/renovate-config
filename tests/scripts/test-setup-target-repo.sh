@@ -62,19 +62,14 @@ assert_file_contains() {
 # --- Setup: create a fake config dir with a git repo and the caller template ---
 CONFIG_DIR="$TMPDIR_TEST/config"
 mkdir -p "$CONFIG_DIR/files"
-git -C "$CONFIG_DIR" init -q
-git -C "$CONFIG_DIR" config user.email "test@example.com"
-git -C "$CONFIG_DIR" config user.name "Test"
 echo "fake-workflow-content" > "$CONFIG_DIR/files/renovate-caller.yml"
-git -C "$CONFIG_DIR" add .
-git -C "$CONFIG_DIR" commit -q -m "init"
-EXPECTED_SHA=$(git -C "$CONFIG_DIR" rev-parse HEAD)
+EXPECTED_SHA=$(git -C "$SCRIPT_DIR" rev-parse HEAD)
 
 # --- Test: copies workflow caller ---
 echo "Test: copies workflow caller to target"
 TARGET="$TMPDIR_TEST/target-basic"
 mkdir -p "$TARGET"
-"$SCRIPT" "$CONFIG_DIR" "$TARGET" > /dev/null
+"$SCRIPT" "$CONFIG_DIR" "$TARGET" "$EXPECTED_SHA" > /dev/null
 assert_file_exists "workflow file created" "$TARGET/.github/workflows/renovate.yml"
 CONTENT=$(cat "$TARGET/.github/workflows/renovate.yml")
 assert_eq "workflow content matches template" "fake-workflow-content" "$CONTENT"
@@ -83,7 +78,7 @@ assert_eq "workflow content matches template" "fake-workflow-content" "$CONTENT"
 echo "Test: creates directory structure"
 TARGET="$TMPDIR_TEST/target-no-github"
 mkdir -p "$TARGET"
-"$SCRIPT" "$CONFIG_DIR" "$TARGET" > /dev/null
+"$SCRIPT" "$CONFIG_DIR" "$TARGET" "$EXPECTED_SHA" > /dev/null
 assert_file_exists "directory and file created" "$TARGET/.github/workflows/renovate.yml"
 
 # --- Test: removes dependabot.yml ---
@@ -91,7 +86,7 @@ echo "Test: removes dependabot.yml if present"
 TARGET="$TMPDIR_TEST/target-dependabot"
 mkdir -p "$TARGET/.github"
 echo "dependabot-config" > "$TARGET/.github/dependabot.yml"
-"$SCRIPT" "$CONFIG_DIR" "$TARGET" > /dev/null
+"$SCRIPT" "$CONFIG_DIR" "$TARGET" "$EXPECTED_SHA" > /dev/null
 assert_file_not_exists "dependabot.yml removed" "$TARGET/.github/dependabot.yml"
 assert_file_exists "workflow still created" "$TARGET/.github/workflows/renovate.yml"
 
@@ -99,15 +94,15 @@ assert_file_exists "workflow still created" "$TARGET/.github/workflows/renovate.
 echo "Test: no error when dependabot.yml absent"
 TARGET="$TMPDIR_TEST/target-no-dependabot"
 mkdir -p "$TARGET"
-"$SCRIPT" "$CONFIG_DIR" "$TARGET" > /dev/null
+"$SCRIPT" "$CONFIG_DIR" "$TARGET" "$EXPECTED_SHA" > /dev/null
 assert_eq "exits successfully" "0" "$?"
 
 # --- Test: idempotent — running twice overwrites cleanly ---
 echo "Test: idempotent run"
 TARGET="$TMPDIR_TEST/target-idempotent"
 mkdir -p "$TARGET"
-"$SCRIPT" "$CONFIG_DIR" "$TARGET" > /dev/null
-"$SCRIPT" "$CONFIG_DIR" "$TARGET" > /dev/null
+"$SCRIPT" "$CONFIG_DIR" "$TARGET" "$EXPECTED_SHA" > /dev/null
+"$SCRIPT" "$CONFIG_DIR" "$TARGET" "$EXPECTED_SHA" > /dev/null
 assert_file_exists "workflow still present after second run" "$TARGET/.github/workflows/renovate.yml"
 CONTENT=$(cat "$TARGET/.github/workflows/renovate.yml")
 assert_eq "content unchanged after second run" "fake-workflow-content" "$CONTENT"
@@ -116,21 +111,24 @@ assert_eq "content unchanged after second run" "fake-workflow-content" "$CONTENT
 echo "Test: @main reference is pinned to SHA with # main comment"
 CONFIG_DIR_PIN="$TMPDIR_TEST/config-pin"
 mkdir -p "$CONFIG_DIR_PIN/files"
-git -C "$CONFIG_DIR_PIN" init -q
-git -C "$CONFIG_DIR_PIN" config user.email "test@example.com"
-git -C "$CONFIG_DIR_PIN" config user.name "Test"
 cat > "$CONFIG_DIR_PIN/files/renovate-caller.yml" << 'EOF'
 uses: StackVista/renovate-config/.github/workflows/renovate.yml@main
 EOF
-git -C "$CONFIG_DIR_PIN" add .
-git -C "$CONFIG_DIR_PIN" commit -q -m "init"
-PIN_SHA=$(git -C "$CONFIG_DIR_PIN" rev-parse HEAD)
+PIN_SHA="$EXPECTED_SHA"
 TARGET="$TMPDIR_TEST/target-pin"
 mkdir -p "$TARGET"
-"$SCRIPT" "$CONFIG_DIR_PIN" "$TARGET" > /dev/null
+"$SCRIPT" "$CONFIG_DIR_PIN" "$TARGET" "$PIN_SHA" > /dev/null
 assert_file_contains "@main replaced with full SHA" \
   "StackVista/renovate-config/.github/workflows/renovate.yml@${PIN_SHA} # main" \
   "$TARGET/.github/workflows/renovate.yml"
+
+echo "Test: actual checkout revision is the default"
+TARGET="$TMPDIR_TEST/target-default-sha"
+"$SCRIPT" "$SCRIPT_DIR" "$TARGET" > /dev/null
+assert_file_contains "default revision comes from the config checkout" "$EXPECTED_SHA" "$TARGET/.github/workflows/renovate.yml"
+echo "dependabot-config" > "$TARGET/.github/dependabot.yaml"
+"$SCRIPT" "$SCRIPT_DIR" "$TARGET" > /dev/null
+assert_file_not_exists "dependabot.yaml removed" "$TARGET/.github/dependabot.yaml"
 
 # --- Test: missing config dir fails ---
 echo "Test: missing caller template exits with error"
