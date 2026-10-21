@@ -5,6 +5,11 @@
   "postUpdateOptions": ["gomodTidy"],
   "packageRules": [
     {
+      "matchDatasources": ["golang-version"],
+      "matchUpdateTypes": ["patch"],
+      "minimumReleaseAge": null
+    },
+    {
       "matchManagers": ["gomod"],
       "matchDepTypes": ["golang", "toolchain"],
       "rangeStrategy": "bump",

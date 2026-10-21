@@ -93,6 +93,22 @@ async function main() {
     assert.equal(action.minimumReleaseAge, '7 days');
     assert.equal(action.internalChecksFilter, 'strict');
   }
+  for (const presets of [['go'], ['docker', 'go', 'automerge'], ['go', 'docker', 'automerge']]) {
+    const selection = await compose(presets);
+    for (const [newVersion, type, pending] of [['1.26.10', 'patch', false], ['1.27.3', 'minor', true]]) {
+      const policy = await applyPackageRules({
+        ...selection, ...dependency('go', undefined, 'golang-version'),
+        manager: 'custom.regex', depType: undefined, packageFile: 'images/goreleaser/Dockerfile',
+        currentValue: '1.26.9', currentVersion: '1.26.9',
+        ...update(type), newValue: newVersion, newVersion,
+      });
+      const result = await filterInternalChecks(policy, getVersioning('semver'), type, [{
+        version: newVersion, releaseTimestamp: new Date(Date.now() - 86400000).toISOString(),
+      }]);
+      assert.equal(result.pendingChecks, pending, `${presets} compiler ${type}`);
+      assert.equal(policy.automerge, false);
+    }
+  }
   for (const [name, type, datasource, immediate, sourceUrl] of [
     ['example.com/library', 'require', 'go', false],
     ['actions/checkout', 'action', 'github-tags', false],
