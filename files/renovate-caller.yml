@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   renovate:
-    uses: StackVista/renovate-config/.github/workflows/renovate.yml@main
+    uses: StackVista/renovate-config/.github/workflows/renovate.yml@005e342f15c5481932542b5552b23cdd21e624a9 # v1.0.0
     # Optional: configure repo-specific inputs for Renovate.
     # with:
     #   # Docker registry authentication (up to 5 slots).

@@ -1,4 +1,4 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["local>StackVista/renovate-config"]
+  "extends": ["local>StackVista/renovate-config#005e342f15c5481932542b5552b23cdd21e624a9"]
 }
