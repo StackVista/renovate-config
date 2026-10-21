@@ -13,6 +13,7 @@ Shared Renovate Bot presets and a reusable GitHub Actions workflow for automated
 | `node.json` | Node/npm ecosystem preset |
 | `java.json` | Java/Maven/Gradle/SBT preset |
 | `files/renovate-caller.yml` | Caller workflow template copied to target repos |
+| `files/release-updates.json` | Consumer rule grouping preset tags with workflow and action pins |
 | `.github/workflows/renovate.yml` | Reusable workflow called by all repos |
 | `.github/workflows/deploy.yml` | One-click onboarding for new repos |
 | `.github/workflows/self-renovate.yml` | Keeps this repo's own deps updated |
@@ -21,7 +22,11 @@ Shared Renovate Bot presets and a reusable GitHub Actions workflow for automated
 ## Installing Renovate into a Repository
 
 The deploy workflow prepares consumer files; it does not provision App access or repository settings.
-Pin every shared preset, reusable workflow and approval action to the same full commit SHA.
+Pin shared presets to release tags using `github>`, for example `github>StackVista/renovate-config:go#v1.0.0`.
+Pin reusable workflows and approval actions to the release's full commit SHA with the tag in the trailing comment.
+Use a release tag when running the deploy workflow. Renovate's built-in `renovate-config` manager updates preset tags.
+The generated consumer rule groups preset, workflow and approval-action updates in one PR that requires human review.
+Untagged development checkouts use SHA preset references that require manual updates.
 
 1. Add the target repository to the updater GitHub App installation.
 2. Go to **Actions → Deploy Renovate to repo** in this repository.
@@ -81,7 +86,7 @@ Applied to every repo. Inherits `config:recommended` and layers these policies:
 
   > **Common mistake:** a variable named `MYTOOLVERSION` (no underscore before `VERSION`) will not be matched. Always use `MY_TOOL_VERSION` or `my_tool_version`.
 
-  This manager is included in `default.json` and is active automatically in any repo extending `local>StackVista/renovate-config` — no per-repo setup required. It covers Dockerfiles, Makefiles, `scripts/*.sh`, and `.github/**/*.yml`. If your repo has version variables in other file types (e.g. `versions.yaml`, `*.mk`), add a `customManagers` entry to your `renovate.json` targeting those paths.
+  This manager is included in `default.json` and is active automatically in any repo extending `github>StackVista/renovate-config#v1.0.0` — no per-repo setup required. It covers Dockerfiles, Makefiles, `scripts/*.sh`, and `.github/**/*.yml`. If your repo has version variables in other file types (e.g. `versions.yaml`, `*.mk`), add a `customManagers` entry to your `renovate.json` targeting those paths.
 
 ### `go.json`
 
@@ -119,10 +124,10 @@ Consumer overrides come last. For example:
 ```json
 {
   "extends": [
-    "github>StackVista/renovate-config",
-    "github>StackVista/renovate-config:docker",
-    "github>StackVista/renovate-config:go",
-    "github>StackVista/renovate-config:automerge"
+    "github>StackVista/renovate-config#v1.0.0",
+    "github>StackVista/renovate-config:docker#v1.0.0",
+    "github>StackVista/renovate-config:go#v1.0.0",
+    "github>StackVista/renovate-config:automerge#v1.0.0"
   ],
   "packageRules": [
     {
@@ -167,8 +172,8 @@ Post-upgrade commands must be whitelisted in both places: `renovate.json` and th
 ```json
 {
   "extends": [
-    "local>StackVista/renovate-config",
-    "local>StackVista/renovate-config:go"
+    "github>StackVista/renovate-config#v1.0.0",
+    "github>StackVista/renovate-config:go#v1.0.0"
   ],
   "postUpgradeTasks": {
     "commands": ["bash tools/regen-mocks.sh '{{depName}}' '{{newVersion}}'"],
@@ -179,7 +184,7 @@ Post-upgrade commands must be whitelisted in both places: `renovate.json` and th
 
 `.github/workflows/renovate.yml` (the `with:` block):
 ```yaml
-    uses: StackVista/renovate-config/.github/workflows/renovate.yml@<SHA> # main
+    uses: StackVista/renovate-config/.github/workflows/renovate.yml@<SHA> # v1.0.0
     with:
       allowed_commands: >-
         ["^bash tools/regen-mocks\\.sh '.*' '.*'$"]
@@ -193,7 +198,7 @@ Up to 5 registry slots are available. Credentials can come from secrets or (for 
 
 `.github/workflows/renovate.yml`:
 ```yaml
-    uses: StackVista/renovate-config/.github/workflows/renovate.yml@<SHA> # main
+    uses: StackVista/renovate-config/.github/workflows/renovate.yml@<SHA> # v1.0.0
     with:
       docker_registry_1: registry.example.com
       docker_registry_1_username: renovate-reader

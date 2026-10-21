@@ -1,0 +1,18 @@
+{
+  "packageRules": [
+    {
+      "matchManagers": [
+        "renovate-config",
+        "github-actions"
+      ],
+      "matchPackageNames": [
+        "StackVista/renovate-config"
+      ],
+      "groupName": "Renovate configuration",
+      "groupSlug": "renovate-config",
+      "separateMajorMinor": false,
+      "separateMinorPatch": false,
+      "automerge": false
+    }
+  ]
+}

@@ -28,9 +28,14 @@ if [[ ! "$RENOVATE_CONFIG_SHA" =~ ^[a-f0-9]{40}$ ]]; then
   echo "Config revision must be a full commit SHA" >&2
   exit 1
 fi
+CONFIG_TAG="$(git -C "$CONFIG_DIR" describe --tags --exact-match "$RENOVATE_CONFIG_SHA" 2>/dev/null || true)"
+REVISION_LABEL=""
+if [[ "$CONFIG_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  REVISION_LABEL=" # ${CONFIG_TAG}"
+fi
 
 mkdir -p "$TARGET_DIR/.github/workflows"
-sed "s|StackVista/renovate-config/.github/workflows/renovate.yml@main|StackVista/renovate-config/.github/workflows/renovate.yml@${RENOVATE_CONFIG_SHA} # main|g" \
+sed -E "s|StackVista/renovate-config/.github/workflows/renovate.yml@[^[:space:]]+([[:blank:]]+#.*)?|StackVista/renovate-config/.github/workflows/renovate.yml@${RENOVATE_CONFIG_SHA}${REVISION_LABEL}|g" \
   "$CALLER_TEMPLATE" > "$TARGET_DIR/.github/workflows/renovate.yml"
 echo "Copied workflow caller to $TARGET_DIR/.github/workflows/renovate.yml (pinned to ${RENOVATE_CONFIG_SHA})"
 

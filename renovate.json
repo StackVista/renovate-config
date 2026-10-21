@@ -1,4 +1,22 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["local>StackVista/renovate-config"]
+  "extends": [
+    "github>StackVista/renovate-config#v1.0.0"
+  ],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "renovate-config",
+        "github-actions"
+      ],
+      "matchPackageNames": [
+        "StackVista/renovate-config"
+      ],
+      "groupName": "Renovate configuration",
+      "groupSlug": "renovate-config",
+      "separateMajorMinor": false,
+      "separateMinorPatch": false,
+      "automerge": false
+    }
+  ]
 }

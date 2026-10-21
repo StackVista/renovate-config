@@ -9,7 +9,7 @@ cd "$(git rev-parse --show-toplevel)"
 echo "Validating JSON syntax..."
 
 errors=0
-for f in *.json; do
+for f in *.json files/release-updates.json; do
   echo "  $f"
   python3 -m json.tool "$f" > /dev/null || errors=$((errors + 1))
 done

@@ -107,8 +107,7 @@ assert_file_exists "workflow still present after second run" "$TARGET/.github/wo
 CONTENT=$(cat "$TARGET/.github/workflows/renovate.yml")
 assert_eq "content unchanged after second run" "fake-workflow-content" "$CONTENT"
 
-# --- Test: @main is replaced with pinned SHA and # main comment ---
-echo "Test: @main reference is pinned to SHA with # main comment"
+echo "Test: @main reference is pinned without an obsolete branch label"
 CONFIG_DIR_PIN="$TMPDIR_TEST/config-pin"
 mkdir -p "$CONFIG_DIR_PIN/files"
 cat > "$CONFIG_DIR_PIN/files/renovate-caller.yml" << 'EOF'
@@ -119,7 +118,45 @@ TARGET="$TMPDIR_TEST/target-pin"
 mkdir -p "$TARGET"
 "$SCRIPT" "$CONFIG_DIR_PIN" "$TARGET" "$PIN_SHA" > /dev/null
 assert_file_contains "@main replaced with full SHA" \
-  "StackVista/renovate-config/.github/workflows/renovate.yml@${PIN_SHA} # main" \
+  "StackVista/renovate-config/.github/workflows/renovate.yml@${PIN_SHA}" \
+  "$TARGET/.github/workflows/renovate.yml"
+assert_eq "untagged revision has no branch label" "0" \
+  "$(grep -c '# main' "$TARGET/.github/workflows/renovate.yml" || true)"
+
+echo "Test: release labels follow the selected revision"
+CONFIG_DIR_TAG="$TMPDIR_TEST/config-tag"
+mkdir -p "$CONFIG_DIR_TAG/files"
+git -C "$CONFIG_DIR_TAG" init --quiet
+git -C "$CONFIG_DIR_TAG" fetch --quiet --depth=1 "$SCRIPT_DIR" "$EXPECTED_SHA"
+git -C "$CONFIG_DIR_TAG" tag v9.9.9 "$EXPECTED_SHA"
+cp "$SCRIPT_DIR/files/renovate-caller.yml" "$CONFIG_DIR_TAG/files/renovate-caller.yml"
+TARGET="$TMPDIR_TEST/target-tag"
+"$SCRIPT" "$CONFIG_DIR_TAG" "$TARGET" "$EXPECTED_SHA" > /dev/null
+assert_file_contains "tag label matches the pinned revision" \
+  "StackVista/renovate-config/.github/workflows/renovate.yml@${EXPECTED_SHA} # v9.9.9" \
+  "$TARGET/.github/workflows/renovate.yml"
+OTHER_SHA=1111111111111111111111111111111111111111
+"$SCRIPT" "$CONFIG_DIR_TAG" "$TARGET" "$OTHER_SHA" > /dev/null
+assert_file_contains "explicit revision replaces the template pin" \
+  "StackVista/renovate-config/.github/workflows/renovate.yml@${OTHER_SHA}" \
+  "$TARGET/.github/workflows/renovate.yml"
+assert_eq "untagged revision has no release label" "0" \
+  "$(grep -c '# v[0-9]' "$TARGET/.github/workflows/renovate.yml" || true)"
+
+echo "Test: deploy fetch restores tags missing from a shallow checkout"
+CONFIG_DIR_SHALLOW="$TMPDIR_TEST/config-shallow"
+mkdir -p "$CONFIG_DIR_SHALLOW/files"
+git -C "$CONFIG_DIR_SHALLOW" init --quiet
+git -C "$CONFIG_DIR_SHALLOW" remote add origin "$CONFIG_DIR_TAG"
+git -C "$CONFIG_DIR_SHALLOW" fetch --quiet --no-tags --depth=1 origin "$EXPECTED_SHA"
+cp "$SCRIPT_DIR/files/renovate-caller.yml" "$CONFIG_DIR_SHALLOW/files/renovate-caller.yml"
+assert_eq "shallow checkout initially has no tags" "" \
+  "$(git -C "$CONFIG_DIR_SHALLOW" tag --list)"
+git -C "$CONFIG_DIR_SHALLOW" fetch --quiet --tags --depth=1 origin "$EXPECTED_SHA"
+TARGET="$TMPDIR_TEST/target-shallow"
+"$SCRIPT" "$CONFIG_DIR_SHALLOW" "$TARGET" "$EXPECTED_SHA" > /dev/null
+assert_file_contains "fetched release tag labels the selected commit" \
+  "StackVista/renovate-config/.github/workflows/renovate.yml@${EXPECTED_SHA} # v9.9.9" \
   "$TARGET/.github/workflows/renovate.yml"
 
 echo "Test: actual checkout revision is the default"

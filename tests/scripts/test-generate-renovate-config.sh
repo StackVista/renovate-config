@@ -9,6 +9,11 @@ TMPDIR_TEST=$(mktemp -d)
 trap 'rm -rf "$TMPDIR_TEST"' EXIT
 
 CONFIG_SHA=$(git -C "$SCRIPT_DIR" rev-parse HEAD)
+CONFIG_TAG=$(git -C "$SCRIPT_DIR" describe --tags --exact-match "$CONFIG_SHA" 2>/dev/null || true)
+CONFIG_REF="$CONFIG_SHA"
+if [[ "$CONFIG_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  CONFIG_REF="$CONFIG_TAG"
+fi
 
 pass=0
 fail=0
@@ -57,8 +62,8 @@ echo "Test: single ecosystem (go)"
 OUT="$TMPDIR_TEST/single.json"
 "$SCRIPT" "go" "$OUT" > /dev/null
 CONTENT=$(cat "$OUT")
-assert_contains "includes default preset" "github>StackVista/renovate-config#${CONFIG_SHA}" "$CONTENT"
-assert_contains "includes go preset" "github>StackVista/renovate-config:go#${CONFIG_SHA}" "$CONTENT"
+assert_contains "includes default preset" "github>StackVista/renovate-config#${CONFIG_REF}" "$CONTENT"
+assert_contains "includes go preset" "github>StackVista/renovate-config:go#${CONFIG_REF}" "$CONTENT"
 assert_not_contains "no docker preset" "renovate-config:docker" "$CONTENT"
 assert_not_contains "automerge requires explicit selection" "renovate-config:automerge" "$CONTENT"
 assert_contains "has schema" 'renovate-schema.json' "$CONTENT"
@@ -82,7 +87,7 @@ OUT="$TMPDIR_TEST/automerge.json"
 "$SCRIPT" "docker,go,automerge" "$OUT" > /dev/null
 EXTENDS=$(python3 -c "import json; print(','.join(json.load(open('$OUT'))['extends']))")
 assert_eq "selected presets retain order" \
-  "github>StackVista/renovate-config#${CONFIG_SHA},github>StackVista/renovate-config:docker#${CONFIG_SHA},github>StackVista/renovate-config:go#${CONFIG_SHA},github>StackVista/renovate-config:automerge#${CONFIG_SHA}" "$EXTENDS"
+  "github>StackVista/renovate-config#${CONFIG_REF},github>StackVista/renovate-config:docker#${CONFIG_REF},github>StackVista/renovate-config:go#${CONFIG_REF},github>StackVista/renovate-config:automerge#${CONFIG_REF}" "$EXTENDS"
 
 # --- Test: ecosystems with whitespace ---
 echo "Test: ecosystems with whitespace"
@@ -109,7 +114,7 @@ OUT="$TMPDIR_TEST/default-check.json"
 CONTENT=$(cat "$OUT")
 # The first extends entry should be the bare default (no colon suffix)
 FIRST_EXTEND=$(python3 -c "import json; print(json.load(open('$OUT'))['extends'][0])")
-assert_eq "first extend is default preset" "github>StackVista/renovate-config#${CONFIG_SHA}" "$FIRST_EXTEND"
+assert_eq "first extend is default preset" "github>StackVista/renovate-config#${CONFIG_REF}" "$FIRST_EXTEND"
 
 echo "Test: explicit revision pins every preset"
 EXPLICIT_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -122,6 +127,28 @@ assert len(refs) == 4
 assert all(ref.endswith('#' + sys.argv[2]) for ref in refs)
 PYTEST
 assert_eq "all presets use the explicit revision" "0" "$?"
+
+echo "Test: released configs use tags and the native update manager"
+RELEASE_DIR="$TMPDIR_TEST/release-config"
+mkdir -p "$RELEASE_DIR/scripts/deploy" "$RELEASE_DIR/files"
+cp "$SCRIPT" "$RELEASE_DIR/scripts/deploy/"
+cp "$SCRIPT_DIR/files/release-updates.json" "$RELEASE_DIR/files/"
+git -C "$RELEASE_DIR" init --quiet
+git -C "$RELEASE_DIR" fetch --quiet --no-tags --depth=1 "$SCRIPT_DIR" "$CONFIG_SHA"
+git -C "$RELEASE_DIR" tag v9.9.9 "$CONFIG_SHA"
+"$RELEASE_DIR/scripts/deploy/generate-renovate-config.sh" "go" "$TMPDIR_TEST/release.json" "$CONFIG_SHA" > /dev/null
+python3 - "$TMPDIR_TEST/release.json" "$SCRIPT_DIR/files/release-updates.json" <<'PYTEST'
+import json
+import sys
+config = json.load(open(sys.argv[1]))
+updater = json.load(open(sys.argv[2]))
+assert config['extends'] == ['github>StackVista/renovate-config#v9.9.9', 'github>StackVista/renovate-config:go#v9.9.9']
+assert 'customManagers' not in config
+assert 'description' not in config
+assert config['packageRules'] == updater['packageRules']
+PYTEST
+assert_eq "release tags and grouping are generated together" "0" "$?"
+
 for value in main short; do
   if "$SCRIPT" "go" "$TMPDIR_TEST/invalid.json" "$value" 2>/dev/null; then
     fail=$((fail + 1))
