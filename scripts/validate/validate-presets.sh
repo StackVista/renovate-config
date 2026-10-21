@@ -15,7 +15,7 @@ fi
 echo "Validating Renovate presets..."
 
 errors=0
-for f in *.json; do
+for f in *.json files/release-updates.json; do
   echo "  $f"
   renovate-config-validator "$f" || errors=$((errors + 1))
 done

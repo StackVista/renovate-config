@@ -122,6 +122,27 @@ assert len(refs) == 4
 assert all(ref.endswith('#' + sys.argv[2]) for ref in refs)
 PYTEST
 assert_eq "all presets use the explicit revision" "0" "$?"
+
+echo "Test: released configs include the SHA updater"
+RELEASE_DIR="$TMPDIR_TEST/release-config"
+mkdir -p "$RELEASE_DIR/scripts/deploy" "$RELEASE_DIR/files"
+cp "$SCRIPT" "$RELEASE_DIR/scripts/deploy/"
+cp "$SCRIPT_DIR/files/release-updates.json" "$RELEASE_DIR/files/"
+git -C "$RELEASE_DIR" init --quiet
+git -C "$RELEASE_DIR" fetch --quiet --no-tags --depth=1 "$SCRIPT_DIR" "$CONFIG_SHA"
+git -C "$RELEASE_DIR" tag v9.9.9 "$CONFIG_SHA"
+"$RELEASE_DIR/scripts/deploy/generate-renovate-config.sh" "go" "$TMPDIR_TEST/release.json" "$CONFIG_SHA" > /dev/null
+python3 - "$TMPDIR_TEST/release.json" "$SCRIPT_DIR/files/release-updates.json" <<'PYTEST'
+import json
+import sys
+config = json.load(open(sys.argv[1]))
+updater = json.load(open(sys.argv[2]))
+assert config['description'] == 'Renovate release v9.9.9'
+assert config['customManagers'] == updater['customManagers']
+assert config['packageRules'] == updater['packageRules']
+PYTEST
+assert_eq "release metadata and updater are generated together" "0" "$?"
+
 for value in main short; do
   if "$SCRIPT" "go" "$TMPDIR_TEST/invalid.json" "$value" 2>/dev/null; then
     fail=$((fail + 1))

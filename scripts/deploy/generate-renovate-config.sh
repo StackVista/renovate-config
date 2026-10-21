@@ -42,8 +42,13 @@ cat > "$OUTPUT_FILE" << EOF
 }
 EOF
 
-# Normalize with jq if available
-if command -v jq &> /dev/null; then
+CONFIG_TAG="$(git -C "$CONFIG_DIR" describe --tags --exact-match "$CONFIG_SHA" 2>/dev/null || true)"
+if [[ "$CONFIG_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  jq --arg release "$CONFIG_TAG" --slurpfile updater "$CONFIG_DIR/files/release-updates.json" \
+    '. + $updater[0] + {description: ("Renovate release " + $release)}' \
+    "$OUTPUT_FILE" > "$OUTPUT_FILE.tmp"
+  mv "$OUTPUT_FILE.tmp" "$OUTPUT_FILE"
+elif command -v jq &> /dev/null; then
   jq . "$OUTPUT_FILE" > "$OUTPUT_FILE.tmp" && mv "$OUTPUT_FILE.tmp" "$OUTPUT_FILE"
 fi
 

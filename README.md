@@ -13,6 +13,7 @@ Shared Renovate Bot presets and a reusable GitHub Actions workflow for automated
 | `node.json` | Node/npm ecosystem preset |
 | `java.json` | Java/Maven/Gradle/SBT preset |
 | `files/renovate-caller.yml` | Caller workflow template copied to target repos |
+| `files/release-updates.json` | Consumer rules for updating released preset SHA pins with workflow and action pins |
 | `.github/workflows/renovate.yml` | Reusable workflow called by all repos |
 | `.github/workflows/deploy.yml` | One-click onboarding for new repos |
 | `.github/workflows/self-renovate.yml` | Keeps this repo's own deps updated |
@@ -22,6 +23,9 @@ Shared Renovate Bot presets and a reusable GitHub Actions workflow for automated
 
 The deploy workflow prepares consumer files; it does not provision App access or repository settings.
 Pin every shared preset, reusable workflow and approval action to the same full commit SHA.
+Use a release tag when running the deploy workflow. Released configs include a release label and a SHA updater.
+The updater groups shared presets, workflows and approval actions in one PR that requires human review.
+It lives in the consumer config so it can update the pinned shared policy. Untagged development pins require manual updates.
 
 1. Add the target repository to the updater GitHub App installation.
 2. Go to **Actions → Deploy Renovate to repo** in this repository.

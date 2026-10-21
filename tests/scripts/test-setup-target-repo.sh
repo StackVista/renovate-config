@@ -143,6 +143,22 @@ assert_file_contains "explicit revision replaces the template pin" \
 assert_eq "untagged revision has no release label" "0" \
   "$(grep -c '# v[0-9]' "$TARGET/.github/workflows/renovate.yml" || true)"
 
+echo "Test: deploy fetch restores tags missing from a shallow checkout"
+CONFIG_DIR_SHALLOW="$TMPDIR_TEST/config-shallow"
+mkdir -p "$CONFIG_DIR_SHALLOW/files"
+git -C "$CONFIG_DIR_SHALLOW" init --quiet
+git -C "$CONFIG_DIR_SHALLOW" remote add origin "$CONFIG_DIR_TAG"
+git -C "$CONFIG_DIR_SHALLOW" fetch --quiet --no-tags --depth=1 origin "$EXPECTED_SHA"
+cp "$SCRIPT_DIR/files/renovate-caller.yml" "$CONFIG_DIR_SHALLOW/files/renovate-caller.yml"
+assert_eq "shallow checkout initially has no tags" "" \
+  "$(git -C "$CONFIG_DIR_SHALLOW" tag --list)"
+git -C "$CONFIG_DIR_SHALLOW" fetch --quiet --tags --depth=1 origin "$EXPECTED_SHA"
+TARGET="$TMPDIR_TEST/target-shallow"
+"$SCRIPT" "$CONFIG_DIR_SHALLOW" "$TARGET" "$EXPECTED_SHA" > /dev/null
+assert_file_contains "fetched release tag labels the selected commit" \
+  "StackVista/renovate-config/.github/workflows/renovate.yml@${EXPECTED_SHA} # v9.9.9" \
+  "$TARGET/.github/workflows/renovate.yml"
+
 echo "Test: actual checkout revision is the default"
 TARGET="$TMPDIR_TEST/target-default-sha"
 "$SCRIPT" "$SCRIPT_DIR" "$TARGET" > /dev/null

@@ -16,6 +16,7 @@ unit-test:
 	@python3 -m unittest discover -s tests/scripts -p 'test_*.py'
 	@python3 -m unittest discover -s .github/actions/auto-approve-renovate -p 'test_*.py'
 	@node tests/policy.cjs $(RENOVATE_DIST)
+	@node tests/release-updates.cjs $(RENOVATE_DIST)
 	@echo ""
 	@echo "All unit tests passed."
 

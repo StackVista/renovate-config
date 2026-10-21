@@ -30,6 +30,7 @@ jobs:
         with:
           path: config
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Generate GitHub App token
         id: app-token
