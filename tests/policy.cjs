@@ -65,6 +65,10 @@ async function main() {
     ['docker-compose', dependency('registry.suse.com/bci/bci-base', undefined, 'docker'), 'pinDigest', 'docker', true],
     ['dockerfile', dependency('registry.suse.com/bci/bci-base', 'stage', 'docker'), 'digest', 'docker', true],
     ['dockerfile', dependency('registry.suse.com/bci/bci-base', 'final', 'docker'), 'minor', 'docker', false],
+    ['dockerfile', dependency('registry.suse.com/bci/golang', 'stage', 'docker'), 'patch', 'go-build-environment', true],
+    ['dockerfile', dependency('registry.suse.com/bci/golang', 'stage', 'docker'), 'minor', 'docker', false],
+    ['dockerfile', dependency('registry.tooling.stackstate.io/suse/bci/golang', 'stage', 'docker'), 'digest', 'go-build-environment', true],
+    ['dockerfile', dependency('registry.tooling.stackstate.io/suse/bci/golang', 'stage', 'docker'), 'pinDigest', 'go-build-environment', true],
     ['dockerfile', dependency('docker/dockerfile', 'syntax', 'docker'), 'patch', 'dockerfile-frontend', false],
     ['custom.regex', dependency('registry.tooling.stackstate.io/quay/stackstate/goreleaser', undefined, 'docker'), 'digest', 'go-build-environment', true],
   ];
@@ -266,6 +270,27 @@ async function main() {
   });
   assert.equal(builderPolicy.groupSlug, 'go-build-environment');
   assert.equal(builderPolicy.automerge, true);
+  for (const selection of [config, reversed, manual]) {
+    for (const name of ['registry.suse.com/bci/golang', 'registry.tooling.stackstate.io/suse/bci/golang']) {
+      for (const type of ['patch', 'digest', 'pinDigest']) {
+        const version = type === 'patch' ? '1.26.10' : '1.26.9';
+        const result = await branchifyUpgrades({ ...selection, errors: [], warnings: [] }, {
+          gomod: [{ packageFile: 'go.mod', deps: [{
+            ...dependency('go', 'golang', 'golang-version'), currentValue: '1.26.8', currentVersion: '1.26.8',
+            updates: [{ ...update('patch'), newValue: '1.26.9', newVersion: '1.26.9' }],
+          }] }],
+          dockerfile: [{ packageFile: 'Dockerfile', deps: [{
+            ...dependency(name, 'stage', 'docker'), currentValue: '1.26.9', currentVersion: '1.26.9',
+            updates: [{ ...update(type), newValue: version, newVersion: version, newDigest: 'sha256:fixture' }],
+          }] }],
+        });
+        assert.equal(result.branches.length, 1, `${name} ${type}`);
+        assert.equal(result.branches[0].branchName, 'renovate/go-build-environment');
+        assert.equal(result.branches[0].upgrades.length, 2);
+        assert.equal(result.branches[0].automerge, selection !== manual);
+      }
+    }
+  }
   const dockerFiles = types => ({ dockerfile: [{ packageFile: 'Dockerfile', deps: types.map((type, index) => ({
     ...dependency(`registry.suse.com/bci/image-${index}`, 'final', 'docker'), updates: [update(type)],
   })) }] });

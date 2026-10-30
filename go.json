@@ -121,7 +121,7 @@
     },
     {
       "matchDatasources": ["docker"],
-      "matchPackageNames": ["quay.io/stackstate/goreleaser", "registry.tooling.stackstate.io/quay/stackstate/goreleaser"],
+      "matchPackageNames": ["quay.io/stackstate/goreleaser", "registry.tooling.stackstate.io/quay/stackstate/goreleaser", "registry.suse.com/bci/golang", "registry.tooling.stackstate.io/suse/bci/golang"],
       "matchUpdateTypes": ["patch", "digest", "pinDigest"],
       "groupName": "Go build environment",
       "groupSlug": "go-build-environment",
