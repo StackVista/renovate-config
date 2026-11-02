@@ -117,6 +117,7 @@ Consumers retain full release tags and set approved operating-system and runtime
 
 This preset opts into PR automerge through GitHub after required checks and App approval.
 Eligible updates include library patches and minors, compiler patches, compatible GitHub Actions references, GoReleaser patches and image patch/digest/pinDigest updates.
+Minor Docker image updates also qualify in the StackState Docker Hub and Quay namespaces and the StackVista GHCR namespace, including their tooling registry proxy paths.
 Kubernetes minors, all majors, Go module revisions, other CI tools and Dockerfile frontends require human review.
 Automatic groups refresh behind the base branch; manual groups rebase on conflicts.
 

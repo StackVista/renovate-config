@@ -40,6 +40,19 @@
       "rebaseWhen": "behind-base-branch"
     },
     {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": [
+        "quay.io/stackstate/**",
+        "ghcr.io/stackvista/**",
+        "stackstate/**",
+        "docker.io/stackstate/**",
+        "registry.tooling.stackstate.io/{quay/stackstate,docker/stackstate,ghcr/stackvista}/**"
+      ],
+      "matchUpdateTypes": ["minor"],
+      "automerge": true,
+      "rebaseWhen": "behind-base-branch"
+    },
+    {
       "matchManagers": ["gomod"],
       "matchPackageNames": ["k8s.io/**", "sigs.k8s.io/**"],
       "matchUpdateTypes": ["minor"],

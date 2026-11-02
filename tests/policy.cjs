@@ -74,6 +74,24 @@ async function main() {
     ['dockerfile', dependency('docker/dockerfile', 'syntax', 'docker'), 'patch', 'dockerfile-frontend', false],
     ['custom.regex', dependency('registry.tooling.stackstate.io/quay/stackstate/goreleaser', undefined, 'docker'), 'digest', 'go-build-environment', true],
   ];
+  for (const name of [
+    'quay.io/stackstate/goreleaser', 'registry.tooling.stackstate.io/quay/stackstate/goreleaser',
+    'quay.io/stackstate/tool', 'ghcr.io/stackvista/tool', 'stackstate/tool', 'docker.io/stackstate/tool',
+    'registry.tooling.stackstate.io/quay/stackstate/tool', 'registry.tooling.stackstate.io/docker/stackstate/tool',
+    'registry.tooling.stackstate.io/ghcr/stackvista/tool',
+  ]) {
+    for (const manager of ['github-actions', 'custom.regex', 'dockerfile']) {
+      examples.push([manager, dependency(name, manager === 'github-actions' ? 'container' : undefined, 'docker'), 'minor', 'docker', true]);
+      examples.push([manager, dependency(name, undefined, 'docker'), 'major', null, false]);
+    }
+  }
+  for (const name of [
+    'quay.io/stackstate-other/tool', 'docker.io/stackstate-other/tool', 'ghcr.io/stackvista-other/tool',
+    'registry.tooling.stackstate.io/quay/prometheus/tool', 'registry.tooling.stackstate.io/docker/library/tool',
+    'registry.tooling.stackstate.io/ghcr/stackvista-other/tool',
+  ]) {
+    examples.push(['dockerfile', dependency(name, 'final', 'docker'), 'minor', 'docker', false]);
+  }
   const manual = await compose(['docker', 'go']);
   for (const order of [['go', 'docker'], ['docker', 'go']]) {
     const shared = await compose([...order, 'automerge'], {});
@@ -347,6 +365,34 @@ async function main() {
   assert.equal(environment.branches.length, 1);
   assert.equal(environment.branches[0].branchName, 'renovate/go-build-environment');
   assert.equal(environment.branches[0].automerge, true);
+  for (const presets of [['docker', 'automerge'], ['go', 'docker', 'automerge'], ['docker', 'go', 'automerge']]) {
+    const selection = await compose(presets, {});
+    const image = {
+      ...dependency('registry.tooling.stackstate.io/quay/stackstate/goreleaser', undefined, 'docker'),
+      currentValue: '2.18.3-so7', currentVersion: '2.18.3-so7',
+      updates: [{ updateType: 'minor', newValue: '2.19.0-so2', newVersion: '2.19.0-so2', newMajor: 2 }],
+    };
+    const packages = {
+      'github-actions': [{ packageFile: '.github/workflows/ci.yml', deps: [{ ...image, depType: 'container' }] }],
+      'custom.regex': [{ packageFile: 'Makefile', deps: [image] }],
+    };
+    const result = await branchifyUpgrades({ ...selection, errors: [], warnings: [] }, packages);
+    assert.equal(result.branches.length, 1);
+    assert.equal(result.branches[0].upgrades.length, 2);
+    assert.equal(result.branches[0].automerge, true);
+    const override = await compose(presets, { packageRules: [{
+      matchDatasources: ['docker'], matchPackageNames: [image.depName], automerge: false,
+    }] });
+    const overridden = await branchifyUpgrades({ ...override, errors: [], warnings: [] }, packages);
+    assert.equal(overridden.branches[0].automerge, false);
+    const mixed = await branchifyUpgrades({ ...selection, errors: [], warnings: [] }, {
+      ...packages, dockerfile: [{ packageFile: 'Dockerfile', deps: [{
+        ...image, depName: 'quay.io/prometheus/tool', packageName: 'quay.io/prometheus/tool',
+      }] }],
+    });
+    assert.equal(mixed.branches.length, 1);
+    assert.equal(mixed.branches[0].automerge, false);
+  }
   const reversed = await compose(['go', 'docker', 'automerge']);
   const builderPolicy = await applyPackageRules({
     ...reversed, ...dependency('quay.io/stackstate/goreleaser', undefined, 'docker'),
