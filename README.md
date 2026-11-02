@@ -49,7 +49,7 @@ Applied to every repo. Inherits `config:recommended` and layers these policies:
 - **Human merges by default** — ecosystem presets do not enable automatic merging. Add `:automerge` separately after configuring required checks and the approval App.
 - **Vulnerability alerts** — GitHub alerts use Renovate's enabled default and OSV is enabled explicitly. Known fixes bypass the release-age delay and have priority 20. Avoid forcing `vulnerabilityAlerts.enabled: true`, which overrides consumer disabling rules.
 - **Grouping** — patch and minor updates share a fallback group. Ecosystem and GitHub Actions rules replace it with specific groups.
-- **Shared automation** — Renovate preset, runner and approval-action updates share a manual group. Image-pipeline action pins stay with coordinated CI rollouts.
+- **Shared automation** — Renovate preset, runner and approval-action updates share a manual group. Image-pipeline action pins use the ordinary GitHub Actions policy.
 - **Priorities and labels** — patches have priority 10. Majors have priority -1 and use `dependencies/major` instead of `dependencies`. Security majors also keep `security`.
 - **Rate limits** — no concurrent PR cap, with five new PRs per hour.
 - **OSV vulnerability alerts** — enabled

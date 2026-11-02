@@ -127,7 +127,14 @@ async function main() {
           ...dependency(name, 'action', 'github-tags'), updates: [update('patch'), update('patch', { isVulnerabilityAlert: true })],
         }],
       }] });
-      assert.equal(flattened.length, 0);
+      assert.equal(flattened.length, 2);
+      for (const upgrade of flattened) {
+        assert.equal(upgrade.automerge, true);
+        if (upgrade.isVulnerabilityAlert) {
+          assert.equal(upgrade.minimumReleaseAge, null);
+          assert.equal(upgrade.prPriority, 20);
+        }
+      }
     }
   }
   for (const [manager, dep, type, group, automerge] of examples) {

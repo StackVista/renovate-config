@@ -85,11 +85,6 @@
       "prPriority": 20
     },
     {
-      "matchManagers": ["github-actions"],
-      "matchPackageNames": ["StackVista/image-pipeline{,/**}"],
-      "enabled": false
-    },
-    {
       "matchManagers": ["renovate-config", "github-actions"],
       "matchPackageNames": ["StackVista/renovate-config"],
       "groupName": "Renovate configuration",
