@@ -35,8 +35,7 @@
       "matchDatasources": ["golang-version", "github-tags"],
       "matchPackageNames": ["go", "golang/go"],
       "matchUpdateTypes": ["patch"],
-      "groupName": "Go build environment",
-      "groupSlug": "go-build-environment"
+      "groupName": "Go build environment"
     },
     {
       "matchManagers": ["gomod"],
@@ -130,7 +129,6 @@
       "matchPackageNames": ["goreleaser/goreleaser"],
       "matchUpdateTypes": ["patch"],
       "groupName": "Go build environment",
-      "groupSlug": "go-build-environment",
       "minimumReleaseAge": null
     },
     {
