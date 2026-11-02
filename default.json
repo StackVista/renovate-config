@@ -83,6 +83,15 @@
       "matchJsonata": ["isVulnerabilityAlert = true or $exists(vulnerabilityFixVersion)"],
       "minimumReleaseAge": null,
       "prPriority": 20
+    },
+    {
+      "matchManagers": ["renovate-config", "github-actions"],
+      "matchPackageNames": ["StackVista/renovate-config"],
+      "groupName": "Renovate configuration",
+      "groupSlug": "renovate-config",
+      "separateMajorMinor": false,
+      "separateMinorPatch": false,
+      "automerge": false
     }
   ],
   "schedule": ["at any time"]

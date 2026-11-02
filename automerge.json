@@ -11,8 +11,9 @@
       "rebaseWhen": "behind-base-branch"
     },
     {
-      "matchManagers": ["gomod"],
-      "matchDepTypes": ["golang", "toolchain"],
+      "matchManagers": ["gomod", "mise"],
+      "matchDatasources": ["golang-version", "github-tags"],
+      "matchPackageNames": ["go", "golang/go"],
       "matchUpdateTypes": ["patch"],
       "automerge": true,
       "rebaseWhen": "behind-base-branch"
@@ -20,6 +21,7 @@
     {
       "matchManagers": ["github-actions"],
       "matchDepTypes": ["action"],
+      "matchPackageNames": ["!StackVista/renovate-config"],
       "matchUpdateTypes": ["patch", "minor", "digest", "pin", "pinDigest"],
       "automerge": true,
       "rebaseWhen": "behind-base-branch"
@@ -34,6 +36,19 @@
     {
       "matchDatasources": ["docker"],
       "matchUpdateTypes": ["patch", "digest", "pinDigest"],
+      "automerge": true,
+      "rebaseWhen": "behind-base-branch"
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": [
+        "quay.io/stackstate/**",
+        "ghcr.io/stackvista/**",
+        "stackstate/**",
+        "docker.io/stackstate/**",
+        "registry.tooling.stackstate.io/{quay/stackstate,docker/stackstate,ghcr/stackvista}/**"
+      ],
+      "matchUpdateTypes": ["minor"],
       "automerge": true,
       "rebaseWhen": "behind-base-branch"
     },
