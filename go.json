@@ -16,21 +16,24 @@
       "separateMinorPatch": true
     },
     {
-      "matchDatasources": ["golang-version"],
+      "matchDatasources": ["golang-version", "github-tags"],
+      "matchPackageNames": ["go", "golang/go"],
       "matchUpdateTypes": ["patch"],
       "minimumReleaseAge": null
     },
     {
-      "matchManagers": ["gomod"],
-      "matchDepTypes": ["golang", "toolchain"],
+      "matchManagers": ["gomod", "mise"],
+      "matchDatasources": ["golang-version", "github-tags"],
+      "matchPackageNames": ["go", "golang/go"],
       "rangeStrategy": "bump",
       "groupName": "Go toolchain",
       "groupSlug": "go-toolchain",
       "minimumReleaseAge": null
     },
     {
-      "matchManagers": ["gomod"],
-      "matchDepTypes": ["golang", "toolchain"],
+      "matchManagers": ["gomod", "mise"],
+      "matchDatasources": ["golang-version", "github-tags"],
+      "matchPackageNames": ["go", "golang/go"],
       "matchUpdateTypes": ["patch"],
       "groupName": "Go build environment",
       "groupSlug": "go-build-environment"

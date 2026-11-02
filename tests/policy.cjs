@@ -56,6 +56,8 @@ async function main() {
     ['gomod', dependency('example.com/library'), 'digest', 'go-library-revisions', false],
     ['gomod', dependency('go', 'golang', 'golang-version'), 'patch', 'go-build-environment', true],
     ['gomod', dependency('go', 'toolchain', 'golang-version'), 'minor', 'go-toolchain', false],
+    ['mise', dependency('golang/go', undefined, 'github-tags'), 'patch', 'go-build-environment', true],
+    ['mise', dependency('golang/go', undefined, 'github-tags'), 'minor', 'go-toolchain', false],
     ['github-actions', dependency('actions/checkout', 'action', 'github-tags'), 'minor', 'github-actions', true],
     ['github-actions', dependency('actions/checkout', 'action', 'github-tags'), 'major', null, false],
     ['custom.regex', dependency('golangci/golangci-lint', undefined, 'github-releases'), 'patch', 'ci-tools', false],
@@ -85,6 +87,21 @@ async function main() {
     const lookup = (await lookupUpdates(compiler)).unwrap();
     assert.equal(lookup.err, undefined);
     assert.deepEqual(lookup.val.updates.map(value => value.updateType).sort(), ['minor', 'patch']);
+    const mise = await require(path.join(renovate, 'modules/manager/mise/index.js')).extractPackageFile(
+      '[tools]\ngo = "1.26.10"\n', 'mise.toml', {},
+    );
+    const miseGo = mise.deps.find(dep => dep.depName === 'go');
+    assert.equal(miseGo.packageName, 'golang/go');
+    assert.equal(miseGo.datasource, 'github-tags');
+    getDatasourceFor('github-tags').getReleases = async () => ({
+      releases: ['go1.26.10', 'go1.26.11', 'go1.27.0'].map(version => ({ version })),
+    });
+    const miseLookup = (await lookupUpdates(await applyPackageRules({
+      ...shared, ...miseGo, manager: 'mise', packageFile: 'mise.toml',
+      currentValue: '1.26.10', currentVersion: '1.26.10',
+    }))).unwrap();
+    assert.equal(miseLookup.err, undefined);
+    assert.deepEqual(miseLookup.val.updates.map(value => value.updateType).sort(), ['minor', 'patch']);
     for (const name of ['registry.suse.com/bci/golang', 'registry.tooling.stackstate.io/suse/bci/golang']) {
       const builder = await applyPackageRules({
         ...shared, ...dependency(name, 'stage', 'docker'), manager: 'dockerfile',
@@ -98,6 +115,9 @@ async function main() {
         gomod: [{ packageFile: 'go.mod', deps: [{
           ...dependency('go', 'golang', 'golang-version'), currentValue: '1.26.10', updates: lookup.val.updates,
         }] }],
+        mise: [{ packageFile: 'mise.toml', deps: [{
+          ...miseGo, currentValue: '1.26.10', currentVersion: '1.26.10', updates: miseLookup.val.updates,
+        }] }],
         dockerfile: [{ packageFile: 'Dockerfile', deps: [{
           ...dependency(name, 'stage', 'docker'), currentValue: '1.26.10', updates: [
             { updateType: 'digest', newValue: '1.26.10', newVersion: '1.26.10', newMajor: 1, newDigest: 'sha256:fixture' },
@@ -106,7 +126,7 @@ async function main() {
         }] }],
       });
       assert.equal(coupled.branches.length, 2);
-      assert.deepEqual(coupled.branches.map(branch => branch.upgrades.length), [2, 2]);
+      assert.deepEqual(coupled.branches.map(branch => branch.upgrades.length), [3, 3]);
       assert.equal(coupled.branches.find(branch => branch.branchName === 'renovate/go-build-environment').automerge, true);
       assert.equal(coupled.branches.find(branch => branch.branchName === 'renovate/go-toolchain').automerge, false);
     }

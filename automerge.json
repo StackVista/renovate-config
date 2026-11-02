@@ -11,8 +11,9 @@
       "rebaseWhen": "behind-base-branch"
     },
     {
-      "matchManagers": ["gomod"],
-      "matchDepTypes": ["golang", "toolchain"],
+      "matchManagers": ["gomod", "mise"],
+      "matchDatasources": ["golang-version", "github-tags"],
+      "matchPackageNames": ["go", "golang/go"],
       "matchUpdateTypes": ["patch"],
       "automerge": true,
       "rebaseWhen": "behind-base-branch"

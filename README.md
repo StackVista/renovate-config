@@ -95,7 +95,7 @@ Applied to every repo. Inherits `config:recommended` and layers these policies:
 - Keeps indirect lookups enabled for advisories, but suppresses ordinary independent indirect updates.
 - Waits seven days for third-party routine releases, including candidates with missing timestamps. StackVista-owned dependencies and known vulnerability fixes bypass this delay.
 - Applies strict Go requirement filtering with range-aware `%goMod` constraints.
-- Groups compiler patches with GoReleaser patches and GoReleaser or BCI Go builder-image refreshes, including registry proxy paths, without a release-age delay.
+- Groups compiler patches from `go.mod` and Mise with GoReleaser patches and GoReleaser or BCI Go builder-image refreshes, including registry proxy paths, without a release-age delay.
 - Keeps compiler and BCI Go builder patches available alongside manual minor upgrades. BCI Go selection uses numeric tags; variants are excluded.
 - Groups BCI Go builder minor and major upgrades with manual compiler upgrades.
 - Runs `go mod tidy` after updates.
