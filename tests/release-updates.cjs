@@ -19,7 +19,6 @@ const presets = load('modules/manager/renovate-config/index.js');
 const actions = load('modules/manager/github-actions/index.js');
 const repo = path.resolve(__dirname, '..');
 const read = file => JSON.parse(fs.readFileSync(path.join(repo, file)));
-const updater = read('files/release-updates.json');
 const oldSha = '1'.repeat(40);
 const newSha = '2'.repeat(40);
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'renovate-release-'));
@@ -36,7 +35,7 @@ async function main() {
   for (const name of ['default', 'go', 'automerge']) {
     policy = mergeChildConfig(policy, { ...read(`${name}.json`), extends: [] });
   }
-  policy = mergeChildConfig(policy, { ...updater, semanticCommits: 'disabled' });
+  policy = mergeChildConfig(policy, { semanticCommits: 'disabled' });
 
   {
     const config = {
@@ -102,7 +101,7 @@ async function main() {
   const paused = mergeChildConfig(policy, {
     packageRules: [
       { matchPackageNames: ['*'], enabled: false },
-      { ...updater.packageRules[0], enabled: true },
+      { matchManagers: ['renovate-config', 'github-actions'], matchPackageNames: ['StackVista/renovate-config'], enabled: true },
     ],
   });
   for (const manager of ['renovate-config', 'github-actions']) {

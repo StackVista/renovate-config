@@ -130,24 +130,22 @@ assert_eq "all presets use the explicit revision" "0" "$?"
 
 echo "Test: released configs use tags and the native update manager"
 RELEASE_DIR="$TMPDIR_TEST/release-config"
-mkdir -p "$RELEASE_DIR/scripts/deploy" "$RELEASE_DIR/files"
+mkdir -p "$RELEASE_DIR/scripts/deploy"
 cp "$SCRIPT" "$RELEASE_DIR/scripts/deploy/"
-cp "$SCRIPT_DIR/files/release-updates.json" "$RELEASE_DIR/files/"
 git -C "$RELEASE_DIR" init --quiet
 git -C "$RELEASE_DIR" fetch --quiet --no-tags --depth=1 "$SCRIPT_DIR" "$CONFIG_SHA"
 git -C "$RELEASE_DIR" tag v9.9.9 "$CONFIG_SHA"
 "$RELEASE_DIR/scripts/deploy/generate-renovate-config.sh" "go" "$TMPDIR_TEST/release.json" "$CONFIG_SHA" > /dev/null
-python3 - "$TMPDIR_TEST/release.json" "$SCRIPT_DIR/files/release-updates.json" <<'PYTEST'
+python3 - "$TMPDIR_TEST/release.json" <<'PYTEST'
 import json
 import sys
 config = json.load(open(sys.argv[1]))
-updater = json.load(open(sys.argv[2]))
 assert config['extends'] == ['github>StackVista/renovate-config#v9.9.9', 'github>StackVista/renovate-config:go#v9.9.9']
 assert 'customManagers' not in config
 assert 'description' not in config
-assert config['packageRules'] == updater['packageRules']
+assert 'packageRules' not in config
 PYTEST
-assert_eq "release tags and grouping are generated together" "0" "$?"
+assert_eq "released configs inherit grouping without local rules" "0" "$?"
 
 for value in main short; do
   if "$SCRIPT" "go" "$TMPDIR_TEST/invalid.json" "$value" 2>/dev/null; then

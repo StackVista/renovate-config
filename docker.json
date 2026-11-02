@@ -44,6 +44,13 @@
       "groupSlug": "go-build-environment"
     },
     {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["registry.suse.com/bci/golang", "registry.tooling.stackstate.io/suse/bci/golang"],
+      "matchUpdateTypes": ["minor", "major"],
+      "groupName": "Go toolchain",
+      "groupSlug": "go-toolchain"
+    },
+    {
       "matchManagers": ["dockerfile"],
       "matchDepTypes": ["syntax"],
       "groupName": "Dockerfile frontend",

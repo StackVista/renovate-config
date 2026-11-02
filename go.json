@@ -5,6 +5,17 @@
   "postUpdateOptions": ["gomodTidy"],
   "packageRules": [
     {
+      "matchDatasources": ["golang-version", "github-tags"],
+      "matchPackageNames": ["go", "golang/go"],
+      "separateMinorPatch": true
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["registry.suse.com/bci/golang", "registry.tooling.stackstate.io/suse/bci/golang"],
+      "allowedVersions": "/^\\d+\\.\\d+(\\.\\d+)*$/",
+      "separateMinorPatch": true
+    },
+    {
       "matchDatasources": ["golang-version"],
       "matchUpdateTypes": ["patch"],
       "minimumReleaseAge": null
@@ -126,6 +137,19 @@
       "groupName": "Go build environment",
       "groupSlug": "go-build-environment",
       "minimumReleaseAge": null
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["registry.suse.com/bci/golang", "registry.tooling.stackstate.io/suse/bci/golang"],
+      "matchUpdateTypes": ["minor", "major"],
+      "groupName": "Go toolchain",
+      "groupSlug": "go-toolchain",
+      "automerge": false
+    },
+    {
+      "matchPackageNames": ["go", "golang/go", "goreleaser/goreleaser", "quay.io/stackstate/goreleaser", "registry.tooling.stackstate.io/quay/stackstate/goreleaser", "registry.suse.com/bci/golang", "registry.tooling.stackstate.io/suse/bci/golang"],
+      "matchUpdateTypes": ["patch", "digest", "pinDigest"],
+      "group": {"branchTopic": "{{replace '^patch-' '' groupSlug}}"}
     },
     {
       "matchManagers": ["gomod"],

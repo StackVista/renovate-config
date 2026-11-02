@@ -25,7 +25,7 @@ The deploy workflow prepares consumer files; it does not provision App access or
 Pin shared presets to release tags using `github>`, for example `github>StackVista/renovate-config:go#v1.0.0`.
 Pin reusable workflows and approval actions to the release's full commit SHA with the tag in the trailing comment.
 Use a release tag when running the deploy workflow. Renovate's built-in `renovate-config` manager updates preset tags.
-The generated consumer rule groups preset, workflow and approval-action updates in one PR that requires human review.
+The default preset groups preset, workflow and approval-action updates in one PR that requires human review.
 Untagged development checkouts use SHA preset references that require manual updates.
 
 1. Add the target repository to the updater GitHub App installation.
@@ -50,6 +50,7 @@ Applied to every repo. Inherits `config:recommended` and layers these policies:
 - **Human merges by default** — ecosystem presets do not enable automatic merging. Add `:automerge` separately after configuring required checks and the approval App.
 - **Vulnerability alerts** — GitHub alerts use Renovate's enabled default and OSV is enabled explicitly. Known fixes bypass the release-age delay and have priority 20. Avoid forcing `vulnerabilityAlerts.enabled: true`, which overrides consumer disabling rules.
 - **Grouping** — patch and minor updates share a fallback group. Ecosystem and GitHub Actions rules replace it with specific groups.
+- **Shared automation** — Renovate preset, runner and approval-action updates share a manual group. Image-pipeline action pins stay with coordinated CI rollouts.
 - **Priorities and labels** — patches have priority 10. Majors have priority -1 and use `dependencies/major` instead of `dependencies`. Security majors also keep `security`.
 - **Rate limits** — no concurrent PR cap, with five new PRs per hour.
 - **OSV vulnerability alerts** — enabled
@@ -96,9 +97,11 @@ Applied to every repo. Inherits `config:recommended` and layers these policies:
 - Waits seven days for third-party routine releases, including candidates with missing timestamps. StackVista-owned dependencies and known vulnerability fixes bypass this delay.
 - Applies strict Go requirement filtering with range-aware `%goMod` constraints.
 - Groups compiler patches with GoReleaser patches and GoReleaser or BCI Go builder-image refreshes, including registry proxy paths, without a release-age delay.
+- Keeps compiler and BCI Go builder patches available alongside manual minor upgrades. BCI Go selection uses numeric tags; variants are excluded.
+- Groups BCI Go builder minor and major upgrades with manual compiler upgrades.
 - Runs `go mod tidy` after updates.
 
-Consumers must supply their approved compiler bounds. Keep toolchain downloads disabled in CI and check the compiler embedded in released binaries. Dependency-specific bounds, such as coupled kops/cloud modules or delegated kube-openapi revisions, remain local.
+Consumers can restrict compiler versions or select full BCI build tags. Keep toolchain downloads disabled in CI and check the compiler embedded in released binaries. Custom toolchain groups, dependency-specific bounds and delegated module revisions remain local.
 
 ### `docker.json`
 

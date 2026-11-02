@@ -34,12 +34,12 @@ function update(type, security = {}) {
 async function main() {
   const fixture = read('tests/fixtures/go-docker-automerge.json');
   const { config: recommended } = await resolveConfigPresets({ extends: ['config:recommended'] });
-  async function compose(presets) {
+  async function compose(presets, consumer = fixture) {
     let config = mergeChildConfig(getConfig(), recommended);
     for (const preset of ['default', ...presets]) {
       config = mergeChildConfig(config, { ...read(`${preset}.json`), extends: [] });
     }
-    return mergeChildConfig(config, { ...fixture, extends: [], semanticCommits: 'disabled' });
+    return mergeChildConfig(config, { ...consumer, extends: [], semanticCommits: 'disabled' });
   }
   const presets = fixture.extends.slice(1).map(value => value.split('#')[0].split(':')[1]);
   const config = await compose(presets);
@@ -66,13 +66,70 @@ async function main() {
     ['dockerfile', dependency('registry.suse.com/bci/bci-base', 'stage', 'docker'), 'digest', 'docker', true],
     ['dockerfile', dependency('registry.suse.com/bci/bci-base', 'final', 'docker'), 'minor', 'docker', false],
     ['dockerfile', dependency('registry.suse.com/bci/golang', 'stage', 'docker'), 'patch', 'go-build-environment', true],
-    ['dockerfile', dependency('registry.suse.com/bci/golang', 'stage', 'docker'), 'minor', 'docker', false],
+    ['dockerfile', dependency('registry.suse.com/bci/golang', 'stage', 'docker'), 'minor', 'go-toolchain', false],
     ['dockerfile', dependency('registry.tooling.stackstate.io/suse/bci/golang', 'stage', 'docker'), 'digest', 'go-build-environment', true],
     ['dockerfile', dependency('registry.tooling.stackstate.io/suse/bci/golang', 'stage', 'docker'), 'pinDigest', 'go-build-environment', true],
     ['dockerfile', dependency('docker/dockerfile', 'syntax', 'docker'), 'patch', 'dockerfile-frontend', false],
     ['custom.regex', dependency('registry.tooling.stackstate.io/quay/stackstate/goreleaser', undefined, 'docker'), 'digest', 'go-build-environment', true],
   ];
   const manual = await compose(['docker', 'go']);
+  for (const order of [['go', 'docker'], ['docker', 'go']]) {
+    const shared = await compose([...order, 'automerge'], {});
+    getDatasourceFor('golang-version').getReleases = async () => ({
+      releases: ['1.26.10', '1.26.11', '1.27.0'].map(version => ({ version })),
+    });
+    const compiler = await applyPackageRules({
+      ...shared, ...dependency('go', 'golang', 'golang-version'), manager: 'gomod', packageFile: 'go.mod',
+      currentValue: '1.26.10', currentVersion: '1.26.10',
+    });
+    const lookup = (await lookupUpdates(compiler)).unwrap();
+    assert.equal(lookup.err, undefined);
+    assert.deepEqual(lookup.val.updates.map(value => value.updateType).sort(), ['minor', 'patch']);
+    for (const name of ['registry.suse.com/bci/golang', 'registry.tooling.stackstate.io/suse/bci/golang']) {
+      const builder = await applyPackageRules({
+        ...shared, ...dependency(name, 'stage', 'docker'), manager: 'dockerfile',
+      });
+      const { filterVersions } = require(path.join(renovate, 'workers/repository/process/lookup/filter.js'));
+      const tags = ['1.26', '1.26.10', '1.27', '1.27-openssl', '1.27-sles15', '1.26.10-1.2.3'];
+      const selected = filterVersions({ ...builder, respectLatest: false }, '1.25', null,
+        tags.map(version => ({ version })), getVersioning(builder.versioning));
+      assert.deepEqual(selected.map(value => value.version), tags.slice(0, 3));
+      const coupled = await branchifyUpgrades({ ...shared, errors: [], warnings: [] }, {
+        gomod: [{ packageFile: 'go.mod', deps: [{
+          ...dependency('go', 'golang', 'golang-version'), currentValue: '1.26.10', updates: lookup.val.updates,
+        }] }],
+        dockerfile: [{ packageFile: 'Dockerfile', deps: [{
+          ...dependency(name, 'stage', 'docker'), currentValue: '1.26.10', updates: [
+            { updateType: 'digest', newValue: '1.26.10', newVersion: '1.26.10', newMajor: 1, newDigest: 'sha256:fixture' },
+            { updateType: 'minor', newValue: '1.27', newVersion: '1.27', newMajor: 1 },
+          ],
+        }] }],
+      });
+      assert.equal(coupled.branches.length, 2);
+      assert.deepEqual(coupled.branches.map(branch => branch.upgrades.length), [2, 2]);
+      assert.equal(coupled.branches.find(branch => branch.branchName === 'renovate/go-build-environment').automerge, true);
+      assert.equal(coupled.branches.find(branch => branch.branchName === 'renovate/go-toolchain').automerge, false);
+    }
+    for (const manager of ['renovate-config', 'github-actions']) {
+      for (const type of ['patch', 'minor', 'major', 'digest']) {
+        const policy = await applyPackageRules({
+          ...shared, ...dependency('StackVista/renovate-config', 'action', 'github-tags'), manager, ...update(type),
+        });
+        assert.equal(policy.groupSlug, 'renovate-config');
+        assert.equal(policy.automerge, false);
+        assert.equal(policy.separateMajorMinor, false);
+        assert.equal(policy.separateMinorPatch, false);
+      }
+    }
+    for (const name of ['StackVista/image-pipeline', 'StackVista/image-pipeline/.github/actions/scan-image']) {
+      const flattened = await flattenUpdates(shared, { 'github-actions': [{
+        packageFile: '.github/workflows/ci.yml', deps: [{
+          ...dependency(name, 'action', 'github-tags'), updates: [update('patch'), update('patch', { isVulnerabilityAlert: true })],
+        }],
+      }] });
+      assert.equal(flattened.length, 0);
+    }
+  }
   for (const [manager, dep, type, group, automerge] of examples) {
     const policy = await applyPackageRules({ ...config, ...dep, manager, ...update(type) });
     assert.equal(policy.groupSlug, group, dep.depName);

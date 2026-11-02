@@ -47,8 +47,4 @@ cat > "$OUTPUT_FILE" << EOF
 }
 EOF
 
-jq --slurpfile updates "$CONFIG_DIR/files/release-updates.json" \
-  '. + $updates[0]' "$OUTPUT_FILE" > "$OUTPUT_FILE.tmp"
-mv "$OUTPUT_FILE.tmp" "$OUTPUT_FILE"
-
 echo "Generated $OUTPUT_FILE with ecosystems: $ECOSYSTEMS"

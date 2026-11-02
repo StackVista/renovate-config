@@ -20,6 +20,7 @@
     {
       "matchManagers": ["github-actions"],
       "matchDepTypes": ["action"],
+      "matchPackageNames": ["!StackVista/renovate-config"],
       "matchUpdateTypes": ["patch", "minor", "digest", "pin", "pinDigest"],
       "automerge": true,
       "rebaseWhen": "behind-base-branch"
