@@ -13,7 +13,6 @@ Shared Renovate Bot presets and a reusable GitHub Actions workflow for automated
 | `node.json` | Node/npm ecosystem preset |
 | `java.json` | Java/Maven/Gradle/SBT preset |
 | `files/renovate-caller.yml` | Caller workflow template copied to target repos |
-| `files/release-updates.json` | Consumer rule grouping preset tags with workflow and action pins |
 | `.github/workflows/renovate.yml` | Reusable workflow called by all repos |
 | `.github/workflows/deploy.yml` | One-click onboarding for new repos |
 | `.github/workflows/self-renovate.yml` | Keeps this repo's own deps updated |
