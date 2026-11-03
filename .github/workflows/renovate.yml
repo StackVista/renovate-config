@@ -11,6 +11,10 @@ on:
         description: "Run in dry-run mode (no PRs created)"
         type: boolean
         default: false
+      mount_docker_socket:
+        description: "Enable Docker for isolated post-upgrade tasks"
+        type: boolean
+        default: false
       allowed_commands:
         description: >-
           JSON array of regex patterns for postUpgradeTasks commands this repo is
@@ -88,9 +92,6 @@ jobs:
     concurrency:
       group: renovate-${{ github.repository }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
       - name: Generate GitHub App token
         id: app-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
@@ -164,6 +165,7 @@ jobs:
         uses: renovatebot/github-action@2804199d260ad00c1fae0e9e842888369391c776 # v46.3.10
         with:
           token: ${{ steps.app-token.outputs.token }}
+          mount-docker-socket: ${{ inputs.mount_docker_socket }}
         env:
           LOG_LEVEL: ${{ inputs.log_level }}
           RENOVATE_DRY_RUN: ${{ inputs.dry_run && 'full' || '' }}

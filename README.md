@@ -195,6 +195,9 @@ Post-upgrade commands must be whitelisted in both places: `renovate.json` and th
       RENOVATE_GH_APP_PRIVATE_KEY: ${{ secrets.RENOVATE_GH_APP_PRIVATE_KEY }}
 ```
 
+Post-upgrade commands that use Docker must also set `mount_docker_socket: true`.
+This grants the trusted commands access to the runner's Docker daemon.
+
 ### Authenticate a private Docker registry
 
 Up to 5 registry slots are available. Credentials can come from secrets or (for the username) from workflow inputs.
