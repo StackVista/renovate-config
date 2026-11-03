@@ -93,6 +93,51 @@ async function main() {
     examples.push(['dockerfile', dependency(name, 'final', 'docker'), 'minor', 'docker', false]);
   }
   const manual = await compose(['docker', 'go']);
+  getDatasourceFor('go').getReleases = async () => ({
+    releases: ['v0.30.0', 'v0.30.1', 'v0.31.0', 'v1.0.0'].map(version => ({
+      version, constraints: { '%goMod': ['1.18.0'] }, releaseTimestamp: '2020-01-01T00:00:00Z',
+    })),
+  });
+  const client = { ...dependency('k8s.io/client-go'), currentValue: 'v0.30.0', currentVersion: 'v0.30.0' };
+  const clientLookup = (await lookupUpdates(await applyPackageRules({
+    ...config, ...client, manager: 'gomod', packageFile: 'go.mod',
+  }))).unwrap();
+  assert.equal(clientLookup.err, undefined);
+  const clientUpdates = await flattenUpdates(config, { gomod: [{
+    packageFile: 'go.mod', deps: [{ ...client, updates: clientLookup.val.updates }],
+  }] });
+  assert.deepEqual(clientUpdates.map(value => value.newVersion), ['v0.30.1']);
+  for (const selection of [manual, config, await compose(['go', 'docker', 'automerge'])]) {
+    for (const name of ['k8s.io/api', 'k8s.io/apimachinery', 'k8s.io/client-go', 'sigs.k8s.io/controller-runtime']) {
+      for (const depType of ['require', 'indirect', 'replace']) {
+        const dep = { ...dependency(name, depType), currentValue: 'v0.30.0', currentVersion: 'v0.30.0' };
+        const updates = [
+          { ...update('patch'), newValue: 'v0.30.1', newVersion: 'v0.30.1', newMajor: 0 },
+          { ...update('minor'), newValue: 'v0.31.0', newVersion: 'v0.31.0', newMajor: 0 },
+          update('major'),
+        ];
+        const packageFiles = { gomod: [{ packageFile: 'go.mod', deps: [{ ...dep, updates }] }] };
+        const ordinary = await flattenUpdates(selection, packageFiles);
+        assert.deepEqual(ordinary.map(value => value.updateType), depType === 'indirect' ? [] : ['patch'], name);
+        for (const security of [{ isVulnerabilityAlert: true }, { vulnerabilityFixVersion: 'v0.31.0' }]) {
+          const alerts = await flattenUpdates(selection, { gomod: [{
+            packageFile: 'go.mod', deps: [{ ...dep, updates: updates.map(value => ({ ...value, ...security })) }],
+          }] });
+          assert.equal(alerts.length, 3, name);
+          assert(alerts.filter(value => value.updateType !== 'patch').every(value => value.automerge === false), name);
+        }
+      }
+    }
+  }
+  const reviewedKubernetes = await compose(['go', 'automerge'], { packageRules: [{
+    matchManagers: ['gomod'], matchPackageNames: ['k8s.io/**', 'sigs.k8s.io/**'],
+    matchUpdateTypes: ['minor', 'major'], enabled: true,
+  }] });
+  const reviewed = await flattenUpdates(reviewedKubernetes, { gomod: [{
+    packageFile: 'go.mod', deps: [{ ...dependency('k8s.io/client-go'), updates: [update('minor'), update('major')] }],
+  }] });
+  assert.deepEqual(reviewed.map(value => value.updateType), ['minor', 'major']);
+  assert(reviewed.every(value => value.automerge === false));
   for (const order of [['go', 'docker'], ['docker', 'go']]) {
     const shared = await compose([...order, 'automerge'], {});
     getDatasourceFor('golang-version').getReleases = async () => ({
@@ -303,6 +348,10 @@ async function main() {
   const { branches } = await branchifyUpgrades({ ...config, errors: [], warnings: [] }, modules);
   for (const [, , group] of families) {
     const branch = branches.find(value => value.branchName === `renovate/major-${group}`);
+    if (group === 'kubernetes-go-modules') {
+      assert.equal(branch, undefined);
+      continue;
+    }
     assert.equal(branch.upgrades.length, 2, group);
     assert.equal(branch.automerge, false, group);
     assert.deepEqual(branch.labels, ['dependencies/major']);

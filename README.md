@@ -92,6 +92,7 @@ Applied to every repo. Inherits `config:recommended` and layers these policies:
 
 - Separates library patches from minors. Kubernetes and AWS modules have family groups.
 - Groups major migrations for Kubernetes, AWS, Azure, OpenTelemetry and `golang.org/x`. Other majors remain individual.
+- Suppresses routine minor and major updates for `k8s.io/**` and `sigs.k8s.io/**`. Patches and vulnerability fixes remain eligible.
 - Keeps indirect lookups enabled for advisories, but suppresses ordinary independent indirect updates.
 - Waits seven days for third-party routine releases, including candidates with missing timestamps. StackVista-owned dependencies and known vulnerability fixes bypass this delay.
 - Applies strict Go requirement filtering with range-aware `%goMod` constraints.
@@ -101,6 +102,33 @@ Applied to every repo. Inherits `config:recommended` and layers these policies:
 - Runs `go mod tidy` after updates.
 
 Consumers can restrict compiler versions or select full BCI build tags. Keep toolchain downloads disabled in CI and check the compiler embedded in released binaries. Custom toolchain groups, dependency-specific bounds and delegated module revisions remain local.
+
+Kubernetes clients retain the minor version selected for the consumer's supported server range.
+The family rule also covers Kubernetes helpers and controllers to avoid independent upgrades that advance their client dependencies.
+[Older clients can use APIs shared with newer servers](https://github.com/kubernetes/client-go#compatibility-client-go---kubernetes-clusters), but API removals still require compatibility checks.
+Newer clients can also work with older servers for shared APIs.
+Client age alone does not prove compatibility.
+Before a minor or major upgrade, check the APIs in use against the oldest and newest supported servers.
+Check upstream maintenance and security support for the selected client branch.
+Security minor and major updates remain available for human review.
+Other dependency upgrades can advance Kubernetes modules through transitive requirements.
+This rule does not enforce a module-resolution cap.
+`kubectl` binaries follow their [separate version-skew policy](https://kubernetes.io/releases/version-skew-policy/#kubectl).
+
+After compatibility review, a consumer can enable minor and major proposals with a local rule:
+
+```json
+{
+  "packageRules": [
+    {
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["k8s.io/**", "sigs.k8s.io/**"],
+      "matchUpdateTypes": ["minor", "major"],
+      "enabled": true
+    }
+  ]
+}
+```
 
 ### `docker.json`
 
@@ -118,7 +146,7 @@ Consumers retain full release tags and set approved operating-system and runtime
 This preset opts into PR automerge through GitHub after required checks and App approval.
 Eligible updates include library patches and minors, compiler patches, compatible GitHub Actions references, GoReleaser patches and image patch/digest/pinDigest updates.
 Minor Docker image updates also qualify in the StackState Docker Hub and Quay namespaces and the StackVista GHCR namespace, including their tooling registry proxy paths.
-Kubernetes minors, all majors, Go module revisions, other CI tools and Dockerfile frontends require human review.
+Kubernetes security or explicitly enabled minor updates, all majors, Go module revisions, other CI tools and Dockerfile frontends require human review.
 Automatic groups refresh behind the base branch; manual groups rebase on conflicts.
 
 Include the base preset, selected ecosystem presets, then `:automerge`.

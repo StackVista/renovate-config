@@ -71,6 +71,14 @@
     },
     {
       "matchManagers": ["gomod"],
+      "matchPackageNames": ["k8s.io/**", "sigs.k8s.io/**"],
+      "matchUpdateTypes": ["minor", "major"],
+      "matchJsonata": ["$not(isVulnerabilityAlert = true or $exists(vulnerabilityFixVersion))"],
+      "enabled": false,
+      "description": "Keep the selected Kubernetes client baseline; allow security fixes and explicit consumer overrides."
+    },
+    {
+      "matchManagers": ["gomod"],
       "matchDepTypes": ["require", "indirect", "replace"],
       "matchPackageNames": ["github.com/aws/**"],
       "matchUpdateTypes": ["patch", "minor", "major"],
