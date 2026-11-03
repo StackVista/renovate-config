@@ -196,7 +196,8 @@ Post-upgrade commands must be whitelisted in both places: `renovate.json` and th
 ```
 
 Post-upgrade commands that use Docker must also set `mount_docker_socket: true`.
-This grants the trusted commands access to the runner's Docker daemon.
+This grants root-equivalent access to the runner through its Docker daemon.
+Enable it only for trusted commands; keep upgraded dependency code inside containers without host mounts or credentials.
 
 ### Authenticate a private Docker registry
 
@@ -338,6 +339,7 @@ Go to **Actions → Renovate** in the target repo, click **Run workflow**, and e
 | `log_level` | string | `info` | Renovate log verbosity (`info`, `debug`) |
 | `dry_run` | boolean | `false` | When true, Renovate analyses but creates no PRs |
 | `allowed_commands` | string | `[]` | JSON array of regex patterns for permitted post-upgrade commands |
+| `mount_docker_socket` | boolean | `false` | Give trusted post-upgrade commands access to the runner's Docker daemon |
 | `docker_registry_1..5` | string | `""` | Docker registry host for auth slot 1–5 |
 | `docker_registry_N_username` | string | `""` | Username for slot N (overridden by `DOCKER_REGISTRY_N_USERNAME` secret if set) |
 
