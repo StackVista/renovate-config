@@ -11,6 +11,10 @@ on:
         description: "Run in dry-run mode (no PRs created)"
         type: boolean
         default: false
+      dependency_read_repositories:
+        description: "Additional repositories in this owner's installation for read-only dependency lookups"
+        type: string
+        default: ""
       allowed_commands:
         description: >-
           JSON array of regex patterns for postUpgradeTasks commands this repo is
@@ -88,9 +92,6 @@ jobs:
     concurrency:
       group: renovate-${{ github.repository }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
       - name: Generate GitHub App token
         id: app-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
@@ -98,9 +99,27 @@ jobs:
           client-id: ${{ vars.RENOVATE_GH_APP_CLIENT_ID }}
           private-key: ${{ secrets.RENOVATE_GH_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
 
-      - name: Configure Docker registry credentials
+      - name: Generate dependency lookup token
+        id: read-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RENOVATE_GH_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RENOVATE_GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            ${{ github.event.repository.name }}
+            ${{ inputs.dependency_read_repositories }}
+          permission-contents: read
+
+      - name: Configure dependency lookup credentials
         env:
+          GITHUB_READ_TOKEN: ${{ steps.read-token.outputs.token }}
+          GITHUB_WRITE_TOKEN: ${{ steps.app-token.outputs.token }}
+          DEPENDENCY_READ_REPOSITORIES: ${{ inputs.dependency_read_repositories }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          CALLING_REPOSITORY: ${{ github.event.repository.name }}
           DOCKER_REGISTRY_1_HOST: ${{ inputs.docker_registry_1 }}
           DOCKER_REGISTRY_1_USERNAME: ${{ secrets.DOCKER_REGISTRY_1_USERNAME || inputs.docker_registry_1_username }}
           DOCKER_REGISTRY_1_PASSWORD: ${{ secrets.DOCKER_REGISTRY_1_PASSWORD }}
@@ -117,7 +136,18 @@ jobs:
           DOCKER_REGISTRY_5_USERNAME: ${{ secrets.DOCKER_REGISTRY_5_USERNAME || inputs.docker_registry_5_username }}
           DOCKER_REGISTRY_5_PASSWORD: ${{ secrets.DOCKER_REGISTRY_5_PASSWORD }}
         run: |
-          host_rules="[]"
+          host_rules=$(jq -cn \
+            --arg read_token "${GITHUB_READ_TOKEN}" \
+            --arg write_token "${GITHUB_WRITE_TOKEN}" \
+            --arg repositories "${DEPENDENCY_READ_REPOSITORIES}" \
+            --arg owner "${REPOSITORY_OWNER}" \
+            --arg caller "${CALLING_REPOSITORY}" \
+            '(["github-tags", "github-releases", "github-changelog"] |
+                map({hostType: ., matchHost: "https://api.github.com/", token: $read_token})) +
+             [{hostType: "git-refs", matchHost: "https://github.com/", token: $read_token}] +
+             ($repositories | split(",") | map(split("\n")[]) | map(gsub("^\\s+|\\s+$"; "")) |
+                map(select(length > 0 and . != $caller) | {hostType: "github", matchHost: ("https://github.com/" + $owner + "/" + .), token: $read_token})) +
+             [{hostType: "github", matchHost: ("https://github.com/" + $owner + "/" + $caller), token: $write_token}]')
 
           add_host_rule() {
             local host="$1"
@@ -149,10 +179,6 @@ jobs:
 
             add_host_rule "${!host_var}" "${!username_var}" "${!password_var}" "slot ${slot}"
           done
-
-          if [[ "${host_rules}" == "[]" ]]; then
-            exit 0
-          fi
 
           {
             echo "RENOVATE_HOST_RULES<<EOF"

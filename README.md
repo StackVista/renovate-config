@@ -38,6 +38,11 @@ Untagged development checkouts use SHA preset references that require manual upd
 
 Check App installation access and the visibility of `RENOVATE_GH_APP_CLIENT_ID` and `RENOVATE_GH_APP_PRIVATE_KEY` for the target repository. The updater App needs commit-status write access and Dependabot-alert read access. Explicit token permission inputs must retain these grants.
 
+The shared Renovate workflow requests a write-capable updater token for the calling repository only.
+A separate contents-read token preserves private dependency lookups in explicitly named repositories.
+Active-repository operations use the updater token; cross-repository dependency reads use the lookup token.
+Set `dependency_read_repositories` to the additional repository names, separated by commas or newlines, when private dependency sources require them.
+
 ## Presets
 
 ### `default.json`
@@ -334,6 +339,7 @@ Go to **Actions → Renovate** in the target repo, click **Run workflow**, and e
 |-------|------|---------|-------------|
 | `log_level` | string | `info` | Renovate log verbosity (`info`, `debug`) |
 | `dry_run` | boolean | `false` | When true, Renovate analyses but creates no PRs |
+| `dependency_read_repositories` | string | `""` | Additional repository names for contents-read dependency lookups |
 | `allowed_commands` | string | `[]` | JSON array of regex patterns for permitted post-upgrade commands |
 | `docker_registry_1..5` | string | `""` | Docker registry host for auth slot 1–5 |
 | `docker_registry_N_username` | string | `""` | Username for slot N (overridden by `DOCKER_REGISTRY_N_USERNAME` secret if set) |
