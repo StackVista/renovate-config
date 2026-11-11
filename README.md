@@ -163,11 +163,11 @@ Omit `:automerge` to retain human merges with the same selection and grouping po
 
 ### `java.json`
 
-Separates Maven, Gradle and SBT dependencies into independent PRs, grouping compatible updates within library families. Patch and minor candidates remain separate; major upgrades stay independent. SBT discovery includes `project/src/main/scala` build definitions. The parser cannot evaluate every computed or inherited version: validate extraction and artifact coordinates for each consumer.
+Separates Maven, Gradle and SBT dependencies into independent PRs, grouping compatible updates within library families. Patch and minor candidates remain separate; major upgrades stay independent. SBT discovery includes `project/src/main/scala` build definitions. Existing `:java` consumers receive the expanded discovery and independent groups when they adopt this revision; dashboard and automerge remain separate opt-ins. Qualify Scala binary suffixes before adoption. The parser cannot evaluate every computed or inherited version: validate extraction and artifact coordinates for each consumer.
 
 Add `:java-dashboard` to require dashboard approval before creating ordinary JVM and Scalafmt PRs. Detected security fixes bypass dashboard approval. Add `:java-automerge` to merge created patch/minor PRs through GitHub after required CI and App approval; majors remain manual. These presets are independent opt-ins, following `:java`, with consumer constraints last.
 
-SBT package/plugin advisory mappings are incomplete in Renovate. Keep independent CVE remediation for missed extraction, unsupported advisories and fixes outside consumer compatibility bounds. Consumers must exclude tools whose paired binary/checksum inputs cannot be updated coherently.
+Renovate does not map `sbt-package` or `sbt-plugin` to GitHub/OSV Maven advisories. For consumers whose libraries use these datasources, the security bypass does not trigger: security fixes still come through the normal CVE remediation process. Maven advisory tests establish the shared policy only for supported Maven extraction. Keep independent CVE remediation for missed extraction, unsupported advisories and fixes outside consumer compatibility bounds. Consumers must exclude tools whose paired binary/checksum inputs cannot be updated coherently.
 
 ## Overriding Configuration
 
@@ -224,7 +224,7 @@ Up to 5 registry slots are available. Credentials can come from secrets or (for 
 
 Pass `package_registry_proxy` as an HTTPS URL prefix, `package_registry_proxy_username` as the existing read-only build username, and `PACKAGE_REGISTRY_PROXY_TOKEN` as a named secret. The runner scopes both `maven` and `sbt` host rules to that prefix. Set dependency `registryUrls` in the consumer; credentials alone do not change lookup routing. Qualify SBT plugins separately from ordinary Maven metadata lookups.
 
-The updater token is restricted to the calling repository with contents, PR, issue, workflow and commit-status write access plus Dependabot-alert read access. Ensure the installed App grants those permissions before activating a consumer. Private cross-repository lookups require separately scoped credentials.
+The updater retains its existing installation-wide repository access, including private dependency lookups. It requests contents, PR, issue, workflow and commit-status write access plus check-run and Dependabot-alert read access. Ensure the installed App grants those permissions before adopting the runner.
 
 ### Prevent major updates for a specific dependency
 

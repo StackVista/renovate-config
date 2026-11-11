@@ -111,12 +111,13 @@ jobs:
         with:
           client-id: ${{ vars.RENOVATE_GH_APP_CLIENT_ID }}
           private-key: ${{ secrets.RENOVATE_GH_APP_PRIVATE_KEY }}
-          repositories: ${{ github.event.repository.name }}
+          owner: ${{ github.repository_owner }}
           permission-contents: write
           permission-pull-requests: write
           permission-issues: write
           permission-workflows: write
           permission-statuses: write
+          permission-checks: read
           permission-vulnerability-alerts: read
 
       - name: Configure registry credentials
