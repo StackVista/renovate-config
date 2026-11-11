@@ -117,7 +117,7 @@ jobs:
           permission-issues: write
           permission-workflows: write
           permission-statuses: write
-          permission-dependabot-alerts: read
+          permission-vulnerability-alerts: read
 
       - name: Configure registry credentials
         env:
