@@ -1,11 +1,246 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "sbt": {
+    "managerFilePatterns": [
+      "/project/src/main/scala/.*\\.scala$/"
+    ]
+  },
   "packageRules": [
     {
-      "matchManagers": ["maven", "gradle", "sbt"],
-      "matchCategories": ["!security"],
-      "groupName": "Java dependencies",
-      "groupSlug": "java-deps"
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt"
+      ],
+      "groupName": null,
+      "groupSlug": null,
+      "separateMinorPatch": true
+    },
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt"
+      ],
+      "matchPackageNames": [
+        "/^com\\.fasterxml\\.jackson[.:]/"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "Jackson"
+    },
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt"
+      ],
+      "matchPackageNames": [
+        "/^org\\.apache\\.pekko:pekko-(actor|stream|slf4j|testkit|serialization|remote|cluster)/"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "Pekko core"
+    },
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt"
+      ],
+      "matchPackageNames": [
+        "/^org\\.apache\\.pekko:pekko-http/"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "Pekko HTTP"
+    },
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt"
+      ],
+      "matchPackageNames": [
+        "/^org\\.apache\\.pekko:pekko-connectors/"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "Pekko connectors"
+    },
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt"
+      ],
+      "matchPackageNames": [
+        "/^org\\.apache\\.kafka:/"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "Kafka"
+    },
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt"
+      ],
+      "matchPackageNames": [
+        "/^org\\.slf4j:/"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "SLF4J"
+    },
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt"
+      ],
+      "matchPackageNames": [
+        "/^ch\\.qos\\.logback:/"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "Logback"
+    },
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt"
+      ],
+      "matchPackageNames": [
+        "/^org\\.apache\\.logging\\.log4j:/"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "Log4j"
+    },
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt"
+      ],
+      "matchPackageNames": [
+        "/^org\\.eclipse\\.collections:/"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "Eclipse Collections"
+    },
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt"
+      ],
+      "matchPackageNames": [
+        "/^org\\.bouncycastle:/"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "Bouncy Castle"
+    },
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt"
+      ],
+      "matchPackageNames": [
+        "/^dev\\.zio:/"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "ZIO"
+    },
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt"
+      ],
+      "matchPackageNames": [
+        "/^io\\.opentelemetry:/"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "OpenTelemetry"
+    },
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt"
+      ],
+      "matchPackageNames": [
+        "/^io\\.prometheus:prometheus-metrics-/"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "Prometheus"
+    },
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt"
+      ],
+      "matchPackageNames": [
+        "/^nl\\.gn0s1s:elastic4s-/"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "elastic4s"
+    },
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt"
+      ],
+      "matchPackageNames": [
+        "sbt/sbt",
+        "org.scala-sbt:sbt"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "sbt"
     }
   ]
 }
