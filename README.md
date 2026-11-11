@@ -11,7 +11,9 @@ Shared Renovate Bot presets and a reusable GitHub Actions workflow for automated
 | `docker.json` | Docker base image preset |
 | `automerge.json` | Optional automatic merging after required checks and App approval |
 | `node.json` | Node/npm ecosystem preset |
-| `java.json` | Java/Maven/Gradle/SBT preset |
+| `java.json` | JVM family grouping and nested SBT build discovery |
+| `java-dashboard.json` | Optional dashboard approval for routine JVM updates |
+| `java-automerge.json` | Optional JVM patch/minor automerge |
 | `files/renovate-caller.yml` | Caller workflow template copied to target repos |
 | `.github/workflows/renovate.yml` | Reusable workflow called by all repos |
 | `.github/workflows/deploy.yml` | One-click onboarding for new repos |
@@ -161,7 +163,11 @@ Omit `:automerge` to retain human merges with the same selection and grouping po
 
 ### `java.json`
 
-- Groups Maven, Gradle, and SBT dependencies into one PR
+Separates Maven, Gradle and SBT dependencies into independent PRs, grouping compatible updates within library families. Patch and minor candidates remain separate; major upgrades stay independent. SBT discovery includes `project/src/main/scala` build definitions. Existing `:java` consumers receive the expanded discovery and independent groups when they adopt this revision; dashboard and automerge remain separate opt-ins. Qualify Scala binary suffixes before adoption. The parser cannot evaluate every computed or inherited version: validate extraction and artifact coordinates for each consumer.
+
+Add `:java-dashboard` to require dashboard approval before creating ordinary JVM and Scalafmt PRs. Detected security fixes bypass dashboard approval. Add `:java-automerge` to merge created patch/minor PRs through GitHub after required CI and App approval; majors remain manual. These presets are independent opt-ins, following `:java`, with consumer constraints last.
+
+Renovate does not map `sbt-package` or `sbt-plugin` to GitHub/OSV Maven advisories. For consumers whose libraries use these datasources, the security bypass does not trigger: security fixes still come through the normal CVE remediation process. Maven advisory tests establish the shared policy only for supported Maven extraction. Keep independent CVE remediation for missed extraction, unsupported advisories and fixes outside consumer compatibility bounds. Consumers must exclude tools whose paired binary/checksum inputs cannot be updated coherently.
 
 ## Overriding Configuration
 
@@ -213,6 +219,12 @@ Up to 5 registry slots are available. Credentials can come from secrets or (for 
       RENOVATE_GH_APP_PRIVATE_KEY: ${{ secrets.RENOVATE_GH_APP_PRIVATE_KEY }}
       DOCKER_REGISTRY_1_PASSWORD: ${{ secrets.PRIVATE_REGISTRY_PASSWORD }}
 ```
+
+### Authenticate a Maven/SBT proxy
+
+Pass `package_registry_proxy` as an HTTPS URL prefix, `package_registry_proxy_username` as the existing read-only build username, and `PACKAGE_REGISTRY_PROXY_TOKEN` as a named secret. The runner scopes both `maven` and `sbt` host rules to that prefix. Set dependency `registryUrls` in the consumer; credentials alone do not change lookup routing. Qualify SBT plugins separately from ordinary Maven metadata lookups.
+
+The updater retains its existing installation-wide repository access, including private dependency lookups. It requests contents, PR, issue, workflow and commit-status write access plus check-run and Dependabot-alert read access. Ensure the installed App grants those permissions before adopting the runner.
 
 ### Prevent major updates for a specific dependency
 
@@ -340,11 +352,13 @@ Go to **Actions → Renovate** in the target repo, click **Run workflow**, and e
 | `dry_run` | boolean | `false` | When true, Renovate analyses but creates no PRs |
 | `allowed_commands` | string | `[]` | JSON array of regex patterns for permitted post-upgrade commands |
 | `mount_docker_socket` | boolean | `false` | Give trusted post-upgrade commands access to the runner's Docker daemon |
+| `package_registry_proxy` | string | `""` | Optional authenticated Maven/SBT proxy URL prefix |
+| `package_registry_proxy_username` | string | `""` | Existing read-only proxy username |
 | `docker_registry_1..5` | string | `""` | Docker registry host for auth slot 1–5 |
 | `docker_registry_N_username` | string | `""` | Username for slot N (overridden by `DOCKER_REGISTRY_N_USERNAME` secret if set) |
 
 Required secret: `RENOVATE_GH_APP_PRIVATE_KEY`.
-Optional secrets: `DOCKER_REGISTRY_N_PASSWORD` for slots 1–5.
+Optional secrets: `PACKAGE_REGISTRY_PROXY_TOKEN`, `DOCKER_REGISTRY_N_PASSWORD` for slots 1–5.
 
 ## Development
 

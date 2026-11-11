@@ -1,0 +1,33 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "automergeType": "pr",
+  "platformAutomerge": true,
+  "packageRules": [
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt",
+        "scalafmt"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "automerge": true,
+      "rebaseWhen": "behind-base-branch"
+    },
+    {
+      "matchManagers": [
+        "maven",
+        "gradle",
+        "sbt",
+        "scalafmt"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "automerge": false
+    }
+  ]
+}

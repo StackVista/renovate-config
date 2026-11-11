@@ -22,6 +22,14 @@ on:
           empty list (no post-upgrade commands permitted).
         type: string
         default: "[]"
+      package_registry_proxy:
+        description: "Optional authenticated Maven proxy URL prefix"
+        type: string
+        default: ""
+      package_registry_proxy_username:
+        description: "Existing read-only package proxy username"
+        type: string
+        default: ""
       docker_registry_1:
         description: "Optional Docker registry host for Renovate authentication slot 1"
         type: string
@@ -65,6 +73,8 @@ on:
     secrets:
       RENOVATE_GH_APP_PRIVATE_KEY:
         required: true
+      PACKAGE_REGISTRY_PROXY_TOKEN:
+        required: false
       DOCKER_REGISTRY_1_USERNAME:
         required: false
       DOCKER_REGISTRY_1_PASSWORD:
@@ -86,6 +96,9 @@ on:
       DOCKER_REGISTRY_5_PASSWORD:
         required: false
 
+permissions:
+  contents: read
+
 jobs:
   renovate:
     runs-on: ubuntu-latest
@@ -99,9 +112,19 @@ jobs:
           client-id: ${{ vars.RENOVATE_GH_APP_CLIENT_ID }}
           private-key: ${{ secrets.RENOVATE_GH_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+          permission-workflows: write
+          permission-statuses: write
+          permission-checks: read
+          permission-vulnerability-alerts: read
 
-      - name: Configure Docker registry credentials
+      - name: Configure registry credentials
         env:
+          PACKAGE_REGISTRY_PROXY: ${{ inputs.package_registry_proxy }}
+          PACKAGE_REGISTRY_PROXY_USERNAME: ${{ inputs.package_registry_proxy_username }}
+          PACKAGE_REGISTRY_PROXY_TOKEN: ${{ secrets.PACKAGE_REGISTRY_PROXY_TOKEN }}
           DOCKER_REGISTRY_1_HOST: ${{ inputs.docker_registry_1 }}
           DOCKER_REGISTRY_1_USERNAME: ${{ secrets.DOCKER_REGISTRY_1_USERNAME || inputs.docker_registry_1_username }}
           DOCKER_REGISTRY_1_PASSWORD: ${{ secrets.DOCKER_REGISTRY_1_PASSWORD }}
@@ -125,13 +148,14 @@ jobs:
             local username="$2"
             local password="$3"
             local label="$4"
+            local host_type="$5"
 
             if [[ -z "${host}" && -z "${username}" && -z "${password}" ]]; then
               return
             fi
 
             if [[ -z "${host}" || -z "${username}" || -z "${password}" ]]; then
-              echo "Docker registry credentials for ${label} require host, username, and password" >&2
+              echo "Registry credentials for ${label} require host, username, and password" >&2
               exit 1
             fi
 
@@ -139,7 +163,8 @@ jobs:
               --arg host "${host}" \
               --arg username "${username}" \
               --arg password "${password}" \
-              '. + [{hostType: "docker", matchHost: $host, username: $username, password: $password}]' \
+              --arg host_type "${host_type}" \
+              '. + [{hostType: $host_type, matchHost: $host, username: $username, password: $password}]' \
               <<< "${host_rules}")
           }
 
@@ -148,7 +173,12 @@ jobs:
             username_var="DOCKER_REGISTRY_${slot}_USERNAME"
             password_var="DOCKER_REGISTRY_${slot}_PASSWORD"
 
-            add_host_rule "${!host_var}" "${!username_var}" "${!password_var}" "slot ${slot}"
+            add_host_rule "${!host_var}" "${!username_var}" "${!password_var}" "slot ${slot}" "docker"
+          done
+
+          for host_type in maven sbt; do
+            add_host_rule "${PACKAGE_REGISTRY_PROXY}" "${PACKAGE_REGISTRY_PROXY_USERNAME}" \
+              "${PACKAGE_REGISTRY_PROXY_TOKEN}" "package proxy" "${host_type}"
           done
 
           if [[ "${host_rules}" == "[]" ]]; then
